@@ -1,7 +1,7 @@
 """Document ingestion pipeline for RAG."""
 from typing import List
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
 from app.core.logging import get_logger
@@ -52,12 +52,9 @@ async def ingest_documents(
 
     logger.info("Split documents into chunks", num_chunks=len(chunks))
 
-    # Get vectorstore for tenant and add documents
+    # Get vectorstore for tenant and add documents (ChromaDB 1.x persists automatically)
     vectorstore = get_vectorstore(tenant_id)
     vectorstore.add_documents(chunks)
-
-    # Persist to disk
-    vectorstore.persist()
 
     logger.info(
         "Ingestion complete",

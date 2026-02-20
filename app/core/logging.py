@@ -19,7 +19,7 @@ def get_logger(name: str = __name__) -> structlog.BoundLogger:
             ),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(
-            logging_level="DEBUG" if settings.debug else "INFO"
+            "DEBUG" if settings.debug else "INFO"
         ),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),

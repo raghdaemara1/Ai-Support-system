@@ -41,10 +41,10 @@ def get_llm() -> BaseChatModel:
         if not settings.google_api_key:
             raise ValueError("GOOGLE_API_KEY is required when using Google provider")
 
-        logger.info("Using Google Gemini Pro LLM provider", model="gemini-1.5-pro")
+        logger.info("Using Google Gemini Pro LLM provider", model="gemini-2.0-flash")
         return ChatGoogleGenerativeAI(
             google_api_key=settings.google_api_key,
-            model="gemini-1.5-pro",  # Gemini Pro model
+            model="gemini-2.0-flash",  # Gemini Pro model
             temperature=0.1,
             max_output_tokens=2048,
         )
@@ -73,7 +73,7 @@ def get_streaming_llm() -> BaseChatModel:
 
         return ChatGoogleGenerativeAI(
             google_api_key=settings.google_api_key,
-            model="gemini-1.5-pro",  # Gemini Pro model
+            model="gemini-2.0-flash",  # Gemini Pro model
             temperature=0.1,
             max_output_tokens=2048,
         )

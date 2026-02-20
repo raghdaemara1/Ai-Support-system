@@ -2,9 +2,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator, List
 
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langgraph.prebuilt import create_react_agent
 
 from app.agents.llm import get_llm
 from app.core.logging import get_logger
@@ -25,7 +24,7 @@ class BaseAgent(ABC):
         self.tenant_config = tenant_config
         self.channel = channel
         self.tenant_id = tenant_id
-        self.executor: AgentExecutor = self._build_executor()
+        self._graph = self._build_graph()
 
     @abstractmethod
     def _get_system_prompt(self) -> str:
@@ -37,27 +36,16 @@ class BaseAgent(ABC):
         """Return list of LangChain tools for this channel."""
         ...
 
-    def _build_executor(self) -> AgentExecutor:
-        """Build the LangChain agent executor."""
+    def _build_graph(self):
+        """Build the LangGraph react agent (LangChain 1.x compatible)."""
         llm = get_llm()
         tools = self._get_tools()
+        system_prompt = self._get_system_prompt()
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", self._get_system_prompt()),
-            MessagesPlaceholder("chat_history"),
-            ("human", "{input}"),
-            MessagesPlaceholder("agent_scratchpad"),
-        ])
-
-        agent = create_tool_calling_agent(llm, tools, prompt)
-
-        return AgentExecutor(
-            agent=agent,
+        return create_react_agent(
+            model=llm,
             tools=tools,
-            max_iterations=5,
-            early_stopping_method="generate",
-            verbose=True,
-            handle_parsing_errors=True,
+            prompt=SystemMessage(content=system_prompt),
         )
 
     async def invoke(
@@ -72,10 +60,10 @@ class BaseAgent(ABC):
         Args:
             user_input: The user's message
             history: List of previous messages in the conversation
-            **kwargs: Additional arguments passed to the executor
+            **kwargs: Additional arguments
 
         Returns:
-            dict containing 'output' and any tool call information
+            dict containing 'output' key with the agent's text response
         """
         logger.debug(
             "Agent invoked",
@@ -84,20 +72,23 @@ class BaseAgent(ABC):
             input_length=len(user_input),
         )
 
-        result = await self.executor.ainvoke({
-            "input": user_input,
-            "chat_history": history,
-            "tenant_id": self.tenant_id,
-            **kwargs,
-        })
+        messages = list(history) + [HumanMessage(content=user_input)]
+        result = await self._graph.ainvoke({"messages": messages})
+
+        # Extract last AI message as output
+        output = ""
+        for msg in reversed(result.get("messages", [])):
+            if isinstance(msg, AIMessage) and msg.content:
+                output = msg.content
+                break
 
         logger.debug(
             "Agent response",
             channel=self.channel,
-            output_length=len(result.get("output", "")),
+            output_length=len(output),
         )
 
-        return result
+        return {"output": output, "messages": result.get("messages", [])}
 
     async def astream(
         self,
@@ -116,13 +107,12 @@ class BaseAgent(ABC):
         Yields:
             dict chunks containing partial output
         """
-        async for chunk in self.executor.astream({
-            "input": user_input,
-            "chat_history": history,
-            "tenant_id": self.tenant_id,
-            **kwargs,
-        }):
-            yield chunk
+        messages = list(history) + [HumanMessage(content=user_input)]
+        async for chunk in self._graph.astream({"messages": messages}):
+            if "agent" in chunk:
+                for msg in chunk["agent"].get("messages", []):
+                    if isinstance(msg, AIMessage) and msg.content:
+                        yield {"output": msg.content}
 
 
 def messages_to_langchain(messages: List[dict]) -> List[BaseMessage]:
