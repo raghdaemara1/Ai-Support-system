@@ -89,6 +89,72 @@ flowchart TD
     A3 -- "Audio / Inbox" --> S1
 ```
 
+---
+
+## Production Enterprise Architecture (Scalable Deployment)
+
+While the default setup uses a local, free-tier stack for development and lower costs, the system is designed to scale directly into a fully managed enterprise environment. This architecture replaces local components with high-availability enterprise services:
+
+```mermaid
+flowchart TD
+    %% Define Styles
+    classDef appLayer fill:#E3F2FD,stroke:#1565C0,stroke-width:2px;
+    classDef docLayer fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px;
+    classDef serviceLayer fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px;
+    classDef dbLayer fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px;
+
+    %% APP LAYER
+    subgraph AppLayer ["APP LAYER (app/app.py)"]
+        direction TB
+        A1[1. Register PDFs with Doc Intelligence]
+        A2[2. Ensure documents are indexed<br>Schema: alarm, parameter]
+        A3[3. Request alarms / parameters<br>Receive JSON]
+        A4[4. Trigger spreadsheet generation<br>Download .xlsx]
+    end
+    class AppLayer appLayer
+
+    %% DOC INTELLIGENCE PLATFORM
+    subgraph DocIntelligence ["DOC INTELLIGENCE PLATFORM"]
+        direction LR
+        D1[Parse<br>Docling / Unstructured] 
+        D2[Lexical<br>BM25 / OpenSearch] 
+        D3[Semantic<br>Chunk + Embed / Snowflake Cortex Search] 
+        D4[Graph<br>Neo4j] 
+        D5[Structured Schema Extraction<br>MongoDB]
+        
+        %% Connect the parsing layer horizontally
+        D1 --> D2
+        D2 --> D3
+        D3 --> D4
+        D4 --> D5
+    end
+    class DocIntelligence docLayer
+
+    %% SERVICE LAYER
+    subgraph ServiceLayer ["SERVICE LAYER"]
+        direction TB
+        S1[ExtractionAgent<br>- Receives JSON records from Doc Intelligence<br>- Maps JSON fields to O3Sigma schema<br>- Calls ReasonClassifier<br>- Saves to MongoDB cache]
+        S2[SpreadsheetGenerator<br>- PhaseEngine selects tabs<br>- Writes .xlsx with openpyxl]
+        
+        S1 --> S2
+    end
+    class ServiceLayer serviceLayer
+
+    %% ANALYTICS
+    subgraph AnalyticsLayer ["ANALYTICS & QUERYING"]
+        An1[(Snowflake Cortex Analytics)]
+    end
+    class AnalyticsLayer dbLayer
+
+    %% CONNECTIONS
+    A1 -- "Ingest Files" --> DocIntelligence
+    A3 -- "'Give me all alarms for machine X'" --> D5
+    D5 -- "JSON alarm records" --> A3
+    
+    A3 -- "JSON alarm records" --> S1
+    D3 -.-> An1
+```
+
 ### 1. Advanced Document Intelligence (RAG Ingestion)
 
 When a complex PDF (e.g., equipment manuals or Alarm code lists) is uploaded to the system via the Advanced CSV Extractor, it goes through a multi-stage **Heuristic Pipeline**:
