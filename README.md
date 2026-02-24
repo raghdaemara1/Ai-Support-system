@@ -29,9 +29,65 @@ To ensure production-grade reliability, this system implements features typicall
 | **Session Cache** | In-memory | Free |
 | **Web Framework** | FastAPI | Free, open source |
 
-## System Architecture & Workflows 
+## System Architecture Overview
 
-The application follows a modern Agentic pattern, splitting logic into **Knowledge Ingestion** (Document Intelligence) and **Conversational Execution** (Automation Flows).
+The application follows a highly modular, enterprise-grade architecture split into three distinct layers. This structure guarantees that unstructured documents are cleanly converted into database records before the Artificial AI (Agent) attempts to interact with them.
+
+```mermaid
+flowchart TD
+    %% Define Styles
+    classDef appLayer fill:#E3F2FD,stroke:#1565C0,stroke-width:2px;
+    classDef docLayer fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px;
+    classDef serviceLayer fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px;
+    classDef dbLayer fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px;
+
+    %% APP LAYER
+    subgraph AppLayer ["APP / UI LAYER (demo.html / chat_demo.py)"]
+        direction TB
+        A1[1. Upload Equipment Manuals / Alarm PDFs]
+        A2[2. Chat Interface: Request Alarm Info / Troubleshooting]
+        A3[3. Voice / Email Channel Integrations]
+    end
+    class AppLayer appLayer
+
+    %% DOC INTELLIGENCE LAYER
+    subgraph DocIntelligence ["DOCUMENT INTELLIGENCE PLATFORM (FastAPI Backend)"]
+        direction LR
+        D1[Unstructured Parser<br>PyPDF2] --> D2[Lexical / Metadata<br>Regex Extraction]
+        D2 --> D3[Heuristics Engine<br>Classify Alarms]
+        D3 --> D4[Structured Schema Extraction<br>Downtime Config DB]
+    end
+    class DocIntelligence docLayer
+
+    %% KNOWLEDGE BASE CONNECTION
+    subgraph DatabaseLayer ["VECTOR & RELATIONAL DATABASES"]
+        V1[(ChromaDB<br>Semantic Vector Store)]
+        V2[(SQLite<br>Session State & Tenants)]
+    end
+    class DatabaseLayer dbLayer
+
+    %% SERVICE LAYER 
+    subgraph ServiceLayer ["SERVICE LAYER (Automation & Agents)"]
+        direction TB
+        S1{Escalation Engine<br>Regex Safety Net}
+        S2[LangGraph Supervisor Agent<br>Groq / Gemini LLM]
+        S3[Tool Executor<br>RAG Search Retrieval]
+        
+        S1 -- Safe Query --> S2
+        S2 <--> S3
+    end
+    class ServiceLayer serviceLayer
+
+    %% CONNECTIONS
+    A1 -- "Raw PDFs" --> D1
+    D4 -- "Highly-Structured JSON" --> V1
+    
+    A2 -- "User Query" --> S1
+    S3 -- "RAG Queries" --> V1
+    
+    S2 -- "AI Response" --> A2
+    A3 -- "Audio / Inbox" --> S1
+```
 
 ### 1. Advanced Document Intelligence (RAG Ingestion)
 
