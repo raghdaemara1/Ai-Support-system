@@ -1,0 +1,1 @@
+"""Spec-aligned agent package."""

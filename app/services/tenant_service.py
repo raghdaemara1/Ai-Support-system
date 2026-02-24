@@ -60,9 +60,16 @@ class TenantService:
         )
         return result.scalar_one_or_none()
 
-    async def get_config(self, tenant_id: str) -> TenantConfig:
-        """Get tenant configuration."""
+    async def get_tenant_by_id_or_slug(self, tenant_id: str) -> Optional[Tenant]:
+        """Get a tenant by UUID or slug (tries UUID first, then slug)."""
         tenant = await self.get_tenant(tenant_id)
+        if not tenant:
+            tenant = await self.get_tenant_by_slug(tenant_id)
+        return tenant
+
+    async def get_config(self, tenant_id: str) -> TenantConfig:
+        """Get tenant configuration, accepting either UUID or slug."""
+        tenant = await self.get_tenant_by_id_or_slug(tenant_id)
         if not tenant:
             # Return default config if tenant not found
             return TenantConfig()

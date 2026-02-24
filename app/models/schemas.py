@@ -47,6 +47,14 @@ class ChatRequest(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 
+class EmailRequest(BaseModel):
+    """Request schema for inbound email from the UI."""
+    tenant_id: str
+    customer_email: str
+    subject: str
+    body: str
+
+
 class ChatResponse(BaseModel):
     """Response schema for chat messages."""
     session_id: str

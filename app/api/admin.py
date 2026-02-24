@@ -4,6 +4,7 @@ import tempfile
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
@@ -105,9 +106,9 @@ async def ingest_knowledge(
         ]
     }
     """
-    # Verify tenant exists
+    # Verify tenant exists (accepts UUID or slug)
     service = TenantService(db)
-    tenant = await service.get_tenant(tenant_id)
+    tenant = await service.get_tenant_by_id_or_slug(tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
@@ -115,7 +116,8 @@ async def ingest_knowledge(
     sources = [s.model_dump() for s in request.sources]
 
     try:
-        result = await ingest_documents(tenant_id=tenant_id, sources=sources)
+        # Use slug as namespace — consistent with how chat endpoint queries the KB
+        result = await ingest_documents(tenant_id=tenant.slug, sources=sources)
         return IngestionResponse(
             status="completed",
             chunks_ingested=result["chunks_ingested"],
@@ -135,9 +137,9 @@ async def upload_knowledge_files(
     """
     Upload PDF or text files to the knowledge base.
     """
-    # Verify tenant exists
+    # Verify tenant exists (accepts UUID or slug)
     service = TenantService(db)
-    tenant = await service.get_tenant(tenant_id)
+    tenant = await service.get_tenant_by_id_or_slug(tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
@@ -166,7 +168,7 @@ async def upload_knowledge_files(
                         "source_name": file.filename,
                     })
 
-        result = await ingest_documents(tenant_id=tenant_id, sources=sources)
+        result = await ingest_documents(tenant_id=tenant.slug, sources=sources)
 
         return IngestionResponse(
             status="completed",
@@ -183,6 +185,85 @@ async def upload_knowledge_files(
                 pass
 
 
+@router.post("/tenants/{tenant_id}/knowledge/advanced_csv_extract")
+async def extract_and_download_csv(
+    tenant_id: str,
+    file: UploadFile = File(...),
+    format: str = "csv",
+    machine_name: str = "Unknown Machine",
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Advanced Data Extraction & CSV Download
+    Upload a PDF. Extracts structured alarms using Regex/LLM logic, 
+    ingests the structured data into ChromaDB for highly accurate RAG, 
+    and returns a downloadable CSV file of all extracted alarms.
+    """
+    # Verify tenant
+    service = TenantService(db)
+    tenant = await service.get_tenant_by_id_or_slug(tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported for advanced extraction")
+
+    try:
+        import json
+        from app.rag.csv_extractor import extract_text_from_pdf, extract_alarms_from_text, generate_alarm_csv, format_alarms_for_rag, get_pdf_metadata
+        
+        # 1. Read PDF bytes
+        content = await file.read()
+        
+        # 2. Extract Raw Text & Metadata
+        raw_text = extract_text_from_pdf(content)
+        metadata = get_pdf_metadata(content, file.filename)
+        
+        # 3. Apply Regex/LLM hybrid extraction for structured alarms
+        alarms = extract_alarms_from_text(raw_text)
+        
+        if not alarms:
+            raise HTTPException(status_code=404, detail="No structured alarms or parameters could be found in this document.")
+
+        # 4. Format into a highly structured string for RAG ingestion
+        rag_text = format_alarms_for_rag(alarms)
+        
+        # 5. Ingest into ChromaDB isolated vector store
+        sources = [{
+            "type": "text",
+            "content": rag_text,
+            "source_name": f"STRUCTURED_EXTRACT_{file.filename}",
+            "metadata": metadata
+        }]
+        await ingest_documents(tenant_id=tenant.slug, sources=sources)
+        
+        # 6. Return Data (CSV or fully structured JSON)
+        if format.lower() == "json":
+            # Document Intelligence structured output mode
+            output_data = {
+                "tenant_id": tenant.slug,
+                "metadata": metadata,
+                "records_extracted": len(alarms),
+                "data": alarms
+            }
+            return Response(
+                content=json.dumps(output_data, indent=2),
+                media_type="application/json"
+            )
+        else:
+            # Traditional CSV download mode
+            csv_data = generate_alarm_csv(alarms, machine_name=machine_name)
+            return Response(
+                content=csv_data,
+                media_type="text/csv",
+                headers={"Content-Disposition": f"attachment; filename=extracted_alarms_{tenant.slug}.csv"}
+            )
+
+    except Exception as e:
+        logger.error("Advanced extraction failed", tenant_id=tenant_id, error=str(e))
+        raise HTTPException(status_code=500, detail=f"Advanced extraction failed: {str(e)}")
+
+
 @router.post("/tenants/{tenant_id}/knowledge/text", response_model=IngestionResponse)
 async def add_knowledge_text(
     tenant_id: str,
@@ -196,7 +277,7 @@ async def add_knowledge_text(
     Simple endpoint for quick text additions.
     """
     service = TenantService(db)
-    tenant = await service.get_tenant(tenant_id)
+    tenant = await service.get_tenant_by_id_or_slug(tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
@@ -206,7 +287,7 @@ async def add_knowledge_text(
         "source_name": source_name,
     }]
 
-    result = await ingest_documents(tenant_id=tenant_id, sources=sources)
+    result = await ingest_documents(tenant_id=tenant.slug, sources=sources)
 
     return IngestionResponse(
         status="completed",

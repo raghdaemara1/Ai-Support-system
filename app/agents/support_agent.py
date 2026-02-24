@@ -5,7 +5,7 @@ from langchain_core.tools import BaseTool
 
 from app.agents.base_agent import BaseAgent
 from app.agents.prompts.system_prompt import get_system_prompt
-from app.tools.knowledge_base import search_knowledge_base
+from app.tools.knowledge_base import make_search_tool
 from app.tools.escalation_tools import escalate_to_human
 from app.models.schemas import TenantConfig
 
@@ -15,8 +15,8 @@ class SupportAgent(BaseAgent):
     Main customer support agent for chat interactions.
 
     This agent handles general customer inquiries using:
-    - Knowledge base search for information retrieval
-    - Escalation to human agents when needed
+    - Knowledge base search for information retrieval (tenant-bound via closure)
+    - Escalation to human agents when needed (no session_id required from LLM)
     """
 
     def _get_system_prompt(self) -> str:
@@ -29,9 +29,9 @@ class SupportAgent(BaseAgent):
         )
 
     def _get_tools(self) -> List[BaseTool]:
-        """Get the tools available to this agent."""
+        """Get tools with tenant_id injected via closure — not exposed to LLM."""
         return [
-            search_knowledge_base,
+            make_search_tool(self.tenant_id),
             escalate_to_human,
         ]
 
@@ -55,9 +55,9 @@ class VoiceAgent(BaseAgent):
         )
 
     def _get_tools(self) -> List[BaseTool]:
-        """Get the tools available to the voice agent."""
+        """Get tools with tenant_id injected via closure."""
         return [
-            search_knowledge_base,
+            make_search_tool(self.tenant_id),
             escalate_to_human,
         ]
 
@@ -81,9 +81,9 @@ class EmailAgent(BaseAgent):
         )
 
     def _get_tools(self) -> List[BaseTool]:
-        """Get the tools available to the email agent."""
+        """Get tools with tenant_id injected via closure."""
         return [
-            search_knowledge_base,
+            make_search_tool(self.tenant_id),
             escalate_to_human,
         ]
 

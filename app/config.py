@@ -24,15 +24,22 @@ class Settings(BaseSettings):
     llm_provider: Literal["groq", "google"] = "groq"
     groq_api_key: str = ""
     google_api_key: str = ""
+    groq_model: str = "llama3-8b-8192"
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./support_agent.db"
+    mongodb_uri: str = ""
+    mongodb_database: str = "support_agent_demo"
 
     # ChromaDB
     chroma_persist_directory: str = "./chroma_data"
 
     # Embeddings
     embedding_model: str = "all-MiniLM-L6-v2"
+
+    # Demo channels
+    enable_email_poller: bool = False
+    email_poll_interval_seconds: int = 60
 
     @property
     def is_development(self) -> bool:

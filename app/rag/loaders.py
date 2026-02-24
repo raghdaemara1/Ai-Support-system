@@ -4,11 +4,6 @@ from pathlib import Path
 from typing import List
 
 from langchain_core.documents import Document
-from langchain_community.document_loaders import (
-    PyPDFLoader,
-    WebBaseLoader,
-    TextLoader,
-)
 
 from app.core.logging import get_logger
 
@@ -18,6 +13,8 @@ logger = get_logger(__name__)
 async def load_pdf(path: str, source_name: str) -> List[Document]:
     """Load documents from a PDF file."""
     try:
+        from langchain_community.document_loaders import PyPDFLoader
+
         loader = PyPDFLoader(path)
         docs = await asyncio.to_thread(loader.load)
         for doc in docs:
@@ -33,6 +30,8 @@ async def load_pdf(path: str, source_name: str) -> List[Document]:
 async def load_url(url: str, source_name: str) -> List[Document]:
     """Load documents from a web URL."""
     try:
+        from langchain_community.document_loaders import WebBaseLoader
+
         loader = WebBaseLoader(url)
         docs = await asyncio.to_thread(loader.load)
         for doc in docs:
@@ -58,6 +57,8 @@ async def load_text(content: str, source_name: str) -> List[Document]:
 async def load_text_file(path: str, source_name: str) -> List[Document]:
     """Load documents from a text file."""
     try:
+        from langchain_community.document_loaders import TextLoader
+
         loader = TextLoader(path)
         docs = await asyncio.to_thread(loader.load)
         for doc in docs:

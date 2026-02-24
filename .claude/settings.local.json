@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(C:/Python312/python.exe:*)"
+      "Bash(C:/Python312/python.exe:*)",
+      "Bash(Select-Object -ExpandProperty Content)"
     ]
   }
 }

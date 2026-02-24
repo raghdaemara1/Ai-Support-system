@@ -78,3 +78,8 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Custom Test Outputs
+nul
+test_extraction_output.json
+*.json

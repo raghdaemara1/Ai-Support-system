@@ -1,9 +1,6 @@
 """Document ingestion pipeline for RAG."""
 from typing import List
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
-
 from app.core.logging import get_logger
 from app.rag.loaders import load_documents
 from app.rag.vectorstore import get_vectorstore
@@ -43,6 +40,8 @@ async def ingest_documents(
         doc.metadata["tenant_id"] = tenant_id
 
     # Chunk documents
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,

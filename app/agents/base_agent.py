@@ -48,6 +48,9 @@ class BaseAgent(ABC):
             prompt=SystemMessage(content=system_prompt),
         )
 
+    # ── Compiled config: cap recursion so tool-call loops always terminate ──
+    _GRAPH_CONFIG = {"recursion_limit": 4}
+
     async def invoke(
         self,
         user_input: str,
@@ -73,14 +76,45 @@ class BaseAgent(ABC):
         )
 
         messages = list(history) + [HumanMessage(content=user_input)]
-        result = await self._graph.ainvoke({"messages": messages})
+        result = await self._graph.ainvoke(
+            {"messages": messages},
+            config=self._GRAPH_CONFIG,
+        )
 
-        # Extract last AI message as output
+        # Extract last AI message as output, stripping malformed tool-call
+        # artifacts that some models emit as raw text content.
+        import re as _re, json as _json
         output = ""
         for msg in reversed(result.get("messages", [])):
             if isinstance(msg, AIMessage) and msg.content:
-                output = msg.content
+                text = msg.content
+                # Strip trailing <function=...> bleed
+                text = _re.sub(r'\s*<function=[^>]*>.*', '', text, flags=_re.DOTALL)
+                
+                # Strip markdown blocks if present
+                clean_for_json = _re.sub(r'^```(?:json)?\s*', '', text)
+                clean_for_json = _re.sub(r'\s*```$', '', clean_for_json).strip()
+                
+                # Strip {"name": ...} tool-call JSON that leaked as text
+                text = _re.sub(r'\s*(?:```(?:json)?\s*)?\{\s*"name"\s*:.*', '', text, flags=_re.DOTALL)
+                text = text.strip()
+                
+                # Skip messages that are ONLY a tool-call JSON (whole content replaced)
+                if not text:
+                    continue
+                    
+                # Also skip if the whole message is valid JSON with "name" key (Llama 4 leak)
+                try:
+                    parsed = _json.loads(clean_for_json)
+                    if isinstance(parsed, dict) and "name" in parsed:
+                        continue
+                except Exception:
+                    pass
+                output = text
                 break
+                
+        if not output:
+            output = "I'm having a bit of trouble connecting to my tools right now. Could you please rephrase your request?"
 
         logger.debug(
             "Agent response",

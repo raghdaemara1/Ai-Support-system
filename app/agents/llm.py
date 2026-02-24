@@ -27,10 +27,12 @@ def get_llm() -> BaseChatModel:
         if not settings.groq_api_key:
             raise ValueError("GROQ_API_KEY is required when using Groq provider")
 
-        logger.info("Using Groq LLM provider", model="llama-3.3-70b-versatile")
+        # Llama 4 Maverick: strong tool calling, newer than 70b-versatile
+        model = "meta-llama/llama-4-maverick-17b-128e-instruct"
+        logger.info("Using Groq LLM provider", model=model)
         return ChatGroq(
             api_key=settings.groq_api_key,
-            model="llama-3.3-70b-versatile",  # Free tier model
+            model=model,
             temperature=0.1,
             max_tokens=1024,
         )
@@ -62,7 +64,7 @@ def get_streaming_llm() -> BaseChatModel:
 
         return ChatGroq(
             api_key=settings.groq_api_key,
-            model="llama-3.3-70b-versatile",
+            model="meta-llama/llama-4-maverick-17b-128e-instruct",
             temperature=0.1,
             max_tokens=1024,
             streaming=True,
