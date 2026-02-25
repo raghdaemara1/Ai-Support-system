@@ -76,9 +76,18 @@ class BaseAgent(ABC):
         )
 
         messages = list(history) + [HumanMessage(content=user_input)]
+        
+        # Inject LangSmith Tracer if observability is enabled
+        config = self._GRAPH_CONFIG.copy()
+        from app.config import settings
+        if settings.langchain_api_key and settings.langchain_tracing_v2.lower() == "true":
+            from langchain_core.callbacks import LangChainTracer
+            tracer = LangChainTracer(project_name=settings.langchain_project)
+            config["callbacks"] = [tracer]
+
         result = await self._graph.ainvoke(
             {"messages": messages},
-            config=self._GRAPH_CONFIG,
+            config=config,
         )
 
         # Extract last AI message as output, stripping malformed tool-call
@@ -142,7 +151,15 @@ class BaseAgent(ABC):
             dict chunks containing partial output
         """
         messages = list(history) + [HumanMessage(content=user_input)]
-        async for chunk in self._graph.astream({"messages": messages}):
+        
+        config = self._GRAPH_CONFIG.copy()
+        from app.config import settings
+        if settings.langchain_api_key and settings.langchain_tracing_v2.lower() == "true":
+            from langchain_core.callbacks import LangChainTracer
+            tracer = LangChainTracer(project_name=settings.langchain_project)
+            config["callbacks"] = [tracer]
+
+        async for chunk in self._graph.astream({"messages": messages}, config=config):
             if "agent" in chunk:
                 for msg in chunk["agent"].get("messages", []):
                     if isinstance(msg, AIMessage) and msg.content:

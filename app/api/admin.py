@@ -3,7 +3,7 @@ import os
 import tempfile
 from typing import List
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,55 +89,33 @@ async def update_tenant_config(
 
 
 # Knowledge Base Ingestion
-@router.post("/tenants/{tenant_id}/knowledge", response_model=IngestionResponse)
+@router.post("/tenants/{tenant_id}/knowledge", response_model=dict)
 async def ingest_knowledge(
     tenant_id: str,
     request: IngestionRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db_session),
-) -> IngestionResponse:
-    """
-    Ingest knowledge from various sources.
-
-    Accepts JSON with sources array:
-    {
-        "sources": [
-            {"type": "text", "content": "...", "source_name": "faq"},
-            {"type": "url", "url": "https://...", "source_name": "website"}
-        ]
-    }
-    """
-    # Verify tenant exists (accepts UUID or slug)
+) -> dict:
+    """Ingest knowledge from various sources."""
     service = TenantService(db)
     tenant = await service.get_tenant_by_id_or_slug(tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # Convert to dict format for ingestion
     sources = [s.model_dump() for s in request.sources]
-
-    try:
-        # Use slug as namespace — consistent with how chat endpoint queries the KB
-        result = await ingest_documents(tenant_id=tenant.slug, sources=sources)
-        return IngestionResponse(
-            status="completed",
-            chunks_ingested=result["chunks_ingested"],
-            sources_processed=result["sources_processed"],
-        )
-    except Exception as e:
-        logger.error("Ingestion failed", tenant_id=tenant_id, error=str(e))
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+    
+    background_tasks.add_task(ingest_documents, tenant_id=tenant.slug, sources=sources)
+    return {"status": "processing", "message": "Ingestion started in background"}
 
 
-@router.post("/tenants/{tenant_id}/knowledge/upload", response_model=IngestionResponse)
+@router.post("/tenants/{tenant_id}/knowledge/upload", response_model=dict)
 async def upload_knowledge_files(
     tenant_id: str,
+    background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db_session),
-) -> IngestionResponse:
-    """
-    Upload PDF or text files to the knowledge base.
-    """
-    # Verify tenant exists (accepts UUID or slug)
+) -> dict:
+    """Upload PDF or text files to the knowledge base asynchronously."""
     service = TenantService(db)
     tenant = await service.get_tenant_by_id_or_slug(tenant_id)
     if not tenant:
@@ -146,43 +124,33 @@ async def upload_knowledge_files(
     sources = []
     temp_files = []
 
-    try:
-        for file in files:
-            # Save uploaded file temporarily
-            suffix = os.path.splitext(file.filename)[1]
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                content = await file.read()
-                tmp.write(content)
-                temp_files.append(tmp.name)
+    for file in files:
+        suffix = os.path.splitext(file.filename)[1]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            temp_files.append(tmp.name)
 
-                if suffix.lower() == ".pdf":
-                    sources.append({
-                        "type": "pdf",
-                        "path": tmp.name,
-                        "source_name": file.filename,
-                    })
-                else:
-                    sources.append({
-                        "type": "text_file",
-                        "path": tmp.name,
-                        "source_name": file.filename,
-                    })
+            sources.append({
+                "type": "pdf" if suffix.lower() == ".pdf" else "text_file",
+                "path": tmp.name,
+                "source_name": file.filename,
+            })
 
-        result = await ingest_documents(tenant_id=tenant.slug, sources=sources)
+    async def ingest_and_cleanup():
+        try:
+            await ingest_documents(tenant_id=tenant.slug, sources=sources)
+        except Exception as e:
+            logger.error("Background ingestion failed", tenant_id=tenant.slug, error=str(e))
+        finally:
+            for path in temp_files:
+                try:
+                    os.unlink(path)
+                except Exception:
+                    pass
 
-        return IngestionResponse(
-            status="completed",
-            chunks_ingested=result["chunks_ingested"],
-            sources_processed=result["sources_processed"],
-        )
-
-    finally:
-        # Clean up temp files
-        for path in temp_files:
-            try:
-                os.unlink(path)
-            except Exception:
-                pass
+    background_tasks.add_task(ingest_and_cleanup)
+    return {"status": "processing", "message": "File ingestion started in background"}
 
 
 @router.post("/tenants/{tenant_id}/knowledge/advanced_csv_extract")

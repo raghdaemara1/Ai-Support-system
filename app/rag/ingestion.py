@@ -3,7 +3,7 @@ from typing import List
 
 from app.core.logging import get_logger
 from app.rag.loaders import load_documents
-from app.rag.vectorstore import get_vectorstore
+from app.rag.vectorstore import get_vectorstore, get_chroma_client
 
 logger = get_logger(__name__)
 
@@ -69,12 +69,15 @@ async def ingest_documents(
 
 
 async def delete_tenant_documents(tenant_id: str) -> bool:
-    """Delete all documents for a tenant."""
+    """Delete all documents for a tenant from ChromaDB."""
     try:
-        vectorstore = get_vectorstore(tenant_id)
-        # ChromaDB doesn't have a direct delete_collection via LangChain
-        # We'd need to use the raw client for full deletion
-        logger.info("Deleted tenant documents", tenant_id=tenant_id)
+        client = get_chroma_client()
+        try:
+            client.delete_collection(f"tenant_{tenant_id}")
+            logger.info("Deleted tenant documents", tenant_id=tenant_id)
+        except ValueError:
+            # Collection might not exist, which is fine
+            logger.info("No collection found to delete", tenant_id=tenant_id)
         return True
     except Exception as e:
         logger.error("Failed to delete documents", tenant_id=tenant_id, error=str(e))

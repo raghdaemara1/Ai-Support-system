@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     groq_model: str = "llama3-8b-8192"
 
+    # Observability (LangSmith)
+    langchain_api_key: str = ""
+    langchain_tracing_v2: str = "false"
+    langchain_project: str = "ai-support-agent"
+
     # Database
     database_url: str = "sqlite+aiosqlite:///./support_agent.db"
     mongodb_uri: str = ""

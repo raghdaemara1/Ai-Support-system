@@ -34,7 +34,7 @@ async def chat_websocket(
     websocket: WebSocket,
     tenant_id: str,
     customer_id: str,
-    token: Optional[str] = Query(None),
+    token: str = Query(...),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -48,13 +48,12 @@ async def chat_websocket(
     """
     await websocket.accept()
 
-    if token:
-        try:
-            verify_token(token, tenant_id)
-        except Exception as e:
-            await websocket.send_json({"type": "error", "content": str(e)})
-            await websocket.close()
-            return
+    try:
+        verify_token(token, tenant_id)
+    except Exception as e:
+        await websocket.send_json({"type": "error", "content": f"Authentication failed: {str(e)}"})
+        await websocket.close(code=1008)
+        return
 
     session_service = SessionService(db)
     tenant_service  = TenantService(db)

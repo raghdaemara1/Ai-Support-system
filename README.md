@@ -29,64 +29,77 @@ To ensure production-grade reliability, this system implements features typicall
 | **Session Cache** | In-memory | Free |
 | **Web Framework** | FastAPI | Free, open source |
 
-## System Architecture Overview
+## System Architecture (Enterprise Deployment Model)
 
-The application follows a highly modular, enterprise-grade architecture split into three distinct layers. This structure guarantees that unstructured documents are cleanly converted into database records before the Artificial AI (Agent) attempts to interact with them.
+This architecture explicitly maps the technical layers of the Agentic Support System to concrete Business Outcomes and Enterprise Integrations. 
 
 ```mermaid
-flowchart TD
+flowchart LR
     %% Define Styles
-    classDef appLayer fill:#E3F2FD,stroke:#1565C0,stroke-width:2px;
-    classDef docLayer fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px;
-    classDef serviceLayer fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px;
-    classDef dbLayer fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px;
+    classDef bizOutcomes fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000;
+    classDef archLayer fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#000;
+    classDef integration fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px,color:#000;
+    classDef invisible fill:none,stroke:none,color:none;
 
-    %% APP LAYER
-    subgraph AppLayer ["APP / UI LAYER (demo.html / chat_demo.py)"]
+    %% L: Business Outcomes (Left Column)
+    subgraph Business ["BUSINESS OUTCOMES"]
         direction TB
-        A1[1. Upload Equipment Manuals / Alarm PDFs]
-        A2[2. Chat Interface: Request Alarm Info / Troubleshooting]
-        A3[3. Voice / Email Channel Integrations]
-    end
-    class AppLayer appLayer
-
-    %% DOC INTELLIGENCE LAYER
-    subgraph DocIntelligence ["DOCUMENT INTELLIGENCE PLATFORM (FastAPI Backend)"]
-        direction LR
-        D1[Unstructured Parser<br>PyPDF2] --> D2[Lexical / Metadata<br>Regex Extraction]
-        D2 --> D3[Heuristics Engine<br>Classify Alarms]
-        D3 --> D4[Structured Schema Extraction<br>Downtime Config DB]
-    end
-    class DocIntelligence docLayer
-
-    %% KNOWLEDGE BASE CONNECTION
-    subgraph DatabaseLayer ["VECTOR & RELATIONAL DATABASES"]
-        V1[(ChromaDB<br>Semantic Vector Store)]
-        V2[(SQLite<br>Session State & Tenants)]
-    end
-    class DatabaseLayer dbLayer
-
-    %% SERVICE LAYER 
-    subgraph ServiceLayer ["SERVICE LAYER (Automation & Agents)"]
-        direction TB
-        S1{Escalation Engine<br>Regex Safety Net}
-        S2[LangGraph Supervisor Agent<br>Groq / Gemini LLM]
-        S3[Tool Executor<br>RAG Search Retrieval]
+        B1["📉 ↓ Ticket Volume by 60%"]
+        B2["⭐ CSAT maintained at > 4.5"]
+        B3["⚡ Sub-1.5s Voice Response"]
+        B4["🔒 Zero PII in Logs"]
         
-        S1 -- Safe Query --> S2
-        S2 <--> S3
+        B1 --- B2 --- B3 --- B4
     end
-    class ServiceLayer serviceLayer
+    class Business bizOutcomes
+    class B1,B2,B3,B4 bizOutcomes
 
-    %% CONNECTIONS
-    A1 -- "Raw PDFs" --> D1
-    D4 -- "Highly-Structured JSON" --> V1
-    
-    A2 -- "User Query" --> S1
-    S3 -- "RAG Queries" --> V1
-    
-    S2 -- "AI Response" --> A2
-    A3 -- "Audio / Inbox" --> S1
+    %% C: Architecture Layers (Center Column)
+    subgraph Architecture ["CORE ARCHITECTURE (Top to Bottom)"]
+        direction TB
+        
+        subgraph Channels ["1. CHANNELS"]
+            direction LR
+            C1[Voice <br> Twilio] ~~~ C2[Chat <br> WebSocket] ~~~ C3[Email <br> IMAP]
+        end
+
+        subgraph Runtime ["2. ESCALATION & ROUTING"]
+            direction LR
+            R1{Regex Safety Net} --> R2((LangGraph Agent)) --> R3[Human Queue]
+        end
+
+        subgraph Pipeline ["3. RAG PIPELINE"]
+            direction LR
+            P1[PDF/URL] --> P2(Chunker) --> P3(Embeddings) --> P4[(ChromaDB)]
+        end
+
+        subgraph Data ["4. DATA STORAGE"]
+            direction LR
+            D1[(SQLite<br>Sessions)] ~~~ D2[(ChromaDB<br>Vectors)] ~~~ D3[(Redis / Cache)]
+        end
+        
+        Channels --> Runtime
+        Runtime --> Pipeline
+        Pipeline --> Data
+    end
+    class Architecture archLayer
+    class C1,C2,C3,R1,R2,R3,P1,P2,P3,P4,D1,D2,D3 archLayer
+
+    %% R: Enterprise Integrations (Right Column)
+    subgraph Integrations ["ENTERPRISE INTEGRATIONS"]
+        direction TB
+        I1["☁️ CRM: Salesforce / Zendesk"]
+        I2["🔐 Identity: JWT / API Keys"]
+        I3["📊 Observability: LangSmith"]
+        I4["🐳 Deployment: Docker / K8s"]
+        
+        I1 --- I2 --- I3 --- I4
+    end
+    class Integrations integration
+    class I1,I2,I3,I4 integration
+
+    %% Invisible routing for layout alignment
+    Business ~~~ Architecture ~~~ Integrations
 ```
 
 ---
