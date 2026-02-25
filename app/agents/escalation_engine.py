@@ -20,7 +20,7 @@ class EscalationEngine:
         re.IGNORECASE,
     )
     HUMAN_REQUEST_PATTERN = re.compile(
-        r'\b(human|engineer|person|agent|speak to|talk to|transfer|escalate)\b',
+        r'\b(human|support engineer|customer service|person|agent|speak to|talk to|transfer|escalate)\b',
         re.IGNORECASE,
     )
     UNSURE_PATTERN = re.compile(

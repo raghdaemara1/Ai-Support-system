@@ -89,3 +89,9 @@ codex/
 Screenshot*.png
 *.md
 !README.md
+
+# Claude internal files
+.claude/
+CLAUDE.md
+CLAUDE.html
+*claude*
