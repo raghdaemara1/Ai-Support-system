@@ -83,3 +83,7 @@ Thumbs.db
 nul
 test_extraction_output.json
 *.json
+
+# Documentation and Media
+codex/
+Screenshot*.png
