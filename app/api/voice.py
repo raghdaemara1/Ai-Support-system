@@ -33,7 +33,7 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-@router.post("/twillo/webhook/{tenant_id}")
+@router.post("/twilio/webhook/{tenant_id}")
 async def twilio_voice_webhook(
     tenant_id: str,
     request: Request,
@@ -91,7 +91,7 @@ async def twilio_voice_webhook(
 
     # Return the AI's response to Twilio as spoken audio, and open the mic for the next turn
     response.say(ai_reply, voice="Polly.Matthew-Neural")
-    g = Gather(input="speech", action=f"/api/voice/twillo/webhook/{tenant_id}", timeout=5)
+    g = Gather(input="speech", action=f"/api/twilio/twilio/webhook/{tenant_id}", timeout=5)
     response.append(g)
     
     # If they don't say anything after 5 seconds, politely ask again

@@ -18,9 +18,11 @@
 | Google Gemini | ⚠️ Quota exhausted | Google API key hit free-tier rate limit |
 | ChromaDB | ✅ Working | ChromaDB 1.x — persists automatically |
 | Embeddings | ✅ Working | `all-MiniLM-L6-v2` via sentence-transformers (CPU) |
-| WebSocket chat | ✅ Implemented | `/chat/ws/{tenant_id}/{customer_id}` |
+| WebSocket chat | ✅ Implemented | `/chat/ws/{tenant_id}/{customer_id}` (Requires JWT Auth) |
+| Voice channel | ✅ Implemented | `/api/twillo/webhook/{tenant_id}` (Twilio TwiML) |
+| Observability | ✅ Implemented | LangSmith tracing via `LangChainTracer` |
 | HTTP chat | ✅ Working | `POST /chat/message` — tested end-to-end |
-| Knowledge ingestion | ✅ Implemented | `POST /admin/tenants/{id}/knowledge` |
+| Knowledge ingestion | ✅ Implemented | `POST /admin/tenants/{id}/knowledge` (BackgroundTasks) |
 | Escalation engine | ✅ Working | Keyword + sentiment + turn-count rules |
 
 ---
@@ -55,6 +57,7 @@ curl http://localhost:8001/health
 | Embeddings | `all-MiniLM-L6-v2` via sentence-transformers | Runs locally on CPU, free |
 | Vector store | ChromaDB 1.3.5 (local) | Per-tenant collections, auto-persist |
 | Database | SQLite via aiosqlite + SQLAlchemy async | File: `./support_agent.db` |
+| Tracing & Eval | LangSmith, Custom Scripts | Enterprise observability & Recall@K metrics |
 | Session cache | In-memory dict (no Redis) | `_session_cache`, `_message_cache` in session_service.py |
 | Escalation queue | In-memory list (no CRM) | `_escalation_queue` in escalation_tools.py |
 | Logging | structlog 25.x | `make_filtering_bound_logger("DEBUG")` — no keyword arg |
@@ -80,12 +83,13 @@ ai-support-agent/
 │   ├── dependencies.py            ← get_db_session, AdminAPIKey
 │   │
 │   ├── api/
-│   │   ├── __init__.py            ← Registers health, chat, admin routers
+│   │   ├── __init__.py            ← Registers health, chat, admin, voice routers
 │   │   ├── health.py              ← GET /health, GET /
 │   │   ├── chat.py                ← WS /chat/ws/{tenant_id}/{customer_id}
 │   │   │                            POST /chat/message
+│   │   ├── voice.py               ← POST /api/twillo/webhook/{tenant_id} (Twilio Voice)
 │   │   └── admin.py               ← POST/GET /admin/tenants
-│   │                                POST /admin/tenants/{id}/knowledge
+│   │                                POST /admin/tenants/{id}/knowledge (Async BackgroundTasks)
 │   │                                POST /admin/tenants/{id}/knowledge/upload
 │   │
 │   ├── agents/
@@ -131,6 +135,9 @@ ai-support-agent/
 │       ├── security.py            ← verify_token, AdminAPIKey
 │       ├── guardrails.py          ← PII redaction, topic filtering
 │       └── exceptions.py          ← Custom exceptions
+│
+├── scripts/
+│   └── evaluate_rag.py            ← automated ChromaDB Recall@K benchmark
 │
 └── tests/
     ├── conftest.py
@@ -276,18 +283,18 @@ Tenants are isolated: each gets their own ChromaDB collection `tenant_{tenant_id
 
 | Feature | Status | Priority |
 |---|---|---|
-| Voice pipeline (Twilio + Deepgram + ElevenLabs) | ❌ Missing | Future |
+| Voice pipeline (Twilio) | ✅ Implemented | `app/api/voice.py` |
+| Authentication (JWT) | ✅ Implemented | `app/api/chat.py` |
 | Email channel (SendGrid inbound parse) | ❌ Missing | Future |
 | CRM integrations (Salesforce, Zendesk) | ❌ Missing | Future |
 | Redis session cache | ❌ Using in-memory | Needed for multi-process |
-| Celery async task queue | ❌ Missing | Needed for large ingestion |
+| Celery async task queue | ❌ Missing | Built BackgroundTasks as interim |
 | Alembic DB migrations | ❌ Using auto-create | Add before production |
 | Analytics service | ❌ Missing | Future |
 | `app/channels/chat_session.py` | ❌ Missing | Future |
 | `app/escalation/handoff.py` | ❌ Missing | Future |
 | `app/tools/crm_tools.py` | ❌ Missing | Future |
 | `app/tools/order_tools.py` | ❌ Missing | Future |
-| Authentication (JWT) | ⚠️ Skeleton only | Need to wire in |
 
 ---
 
