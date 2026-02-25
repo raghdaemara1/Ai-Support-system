@@ -87,3 +87,5 @@ test_extraction_output.json
 # Documentation and Media
 codex/
 Screenshot*.png
+*.md
+!README.md
