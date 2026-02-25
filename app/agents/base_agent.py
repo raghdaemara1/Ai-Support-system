@@ -49,7 +49,7 @@ class BaseAgent(ABC):
         )
 
     # ── Compiled config: cap recursion so tool-call loops always terminate ──
-    _GRAPH_CONFIG = {"recursion_limit": 4}
+    _GRAPH_CONFIG = {"recursion_limit": 15}
 
     async def invoke(
         self,
