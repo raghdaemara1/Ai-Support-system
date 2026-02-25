@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Customer Support Agent — Architecture Overview</title>
+<style>
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --surface2: #1c2230;
+    --border:   #30363d;
+    --text:     #e6edf3;
+    --muted:    #8b949e;
+    --accent:   #58a6ff;
+    --green:    #3fb950;
+    --orange:   #d29922;
+    --purple:   #bc8cff;
+    --red:      #f85149;
+    --teal:     #39d353;
+    --pink:     #f78166;
+    --yellow:   #e3b341;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+    line-height: 1.6;
+    font-size: 15px;
+  }
+
+  /* ── Hero ─────────────────────────────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px 50px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(88,166,255,.12), transparent);
+    pointer-events: none;
+  }
+  .hero .badge {
+    display: inline-block;
+    background: rgba(88,166,255,.15);
+    border: 1px solid rgba(88,166,255,.4);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    background: linear-gradient(135deg, #e6edf3, #58a6ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+  .hero p {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 680px;
+    margin: 0 auto 32px;
+  }
+  .hero-pills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 0;
+  }
+  .pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .pill.green  { border-color: rgba(63,185,80,.4);  color: var(--green);  background: rgba(63,185,80,.08); }
+  .pill.blue   { border-color: rgba(88,166,255,.4); color: var(--accent); background: rgba(88,166,255,.08); }
+  .pill.purple { border-color: rgba(188,140,255,.4);color: var(--purple); background: rgba(188,140,255,.08); }
+  .pill.orange { border-color: rgba(210,153,34,.4); color: var(--orange); background: rgba(210,153,34,.08); }
+
+  /* ── Layout ───────────────────────────────────────────────────────────── */
+  .page { max-width: 1400px; margin: 0 auto; padding: 0 32px 80px; }
+
+  /* ── Section headers ───────────────────────────────────────────────────── */
+  .section { margin-top: 64px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-header .num {
+    background: var(--accent);
+    color: #000;
+    font-size: 11px;
+    font-weight: 700;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-header h2 { font-size: 22px; font-weight: 700; color: var(--text); }
+  .section-header .sub { font-size: 14px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Cards ─────────────────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* ── Tech Stack Grid ───────────────────────────────────────────────────── */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+  }
+  .tech-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    transition: border-color .2s, transform .15s;
+    cursor: default;
+  }
+  .tech-item:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .tech-item .icon { font-size: 26px; margin-bottom: 10px; display: block; }
+  .tech-item .name { font-size: 14px; font-weight: 700; color: var(--text); }
+  .tech-item .role { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+  .tech-item .tag  { display: inline-block; margin-top: 10px; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .tag-free   { background: rgba(63,185,80,.15);  color: var(--green);  border: 1px solid rgba(63,185,80,.3); }
+  .tag-new    { background: rgba(188,140,255,.15); color: var(--purple); border: 1px solid rgba(188,140,255,.3); }
+  .tag-core   { background: rgba(88,166,255,.15);  color: var(--accent); border: 1px solid rgba(88,166,255,.3); }
+  .tag-prod   { background: rgba(210,153,34,.15);  color: var(--orange); border: 1px solid rgba(210,153,34,.3); }
+
+  /* ── Architecture Flow ─────────────────────────────────────────────────── */
+  .arch-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+  .flow-row {
+    display: grid;
+    grid-template-columns: 1fr 40px 1fr;
+    gap: 0;
+    align-items: center;
+  }
+  .flow-row.three { grid-template-columns: 1fr 20px 1fr 20px 1fr; }
+  .flow-row.four  { grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+
+  .flow-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    text-align: center;
+    position: relative;
+  }
+  .flow-box .fb-icon { font-size: 22px; margin-bottom: 8px; }
+  .flow-box .fb-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .flow-box .fb-sub   { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+  .flow-box.highlight { border-color: var(--accent); background: rgba(88,166,255,.06); }
+  .flow-box.new-n8n   { border-color: var(--purple); background: rgba(188,140,255,.06); }
+  .flow-box.green-box { border-color: var(--green);  background: rgba(63,185,80,.06); }
+
+  .arrow-v {
+    text-align: center;
+    color: var(--muted);
+    font-size: 20px;
+    padding: 6px 0;
+    line-height: 1;
+  }
+  .arrow-h {
+    text-align: center;
+    color: var(--muted);
+    font-size: 18px;
+  }
+
+  /* ── Channels ───────────────────────────────────────────────────────────── */
+  .channels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .channel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .channel-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .channel-card.chat::before  { background: linear-gradient(90deg, var(--accent), #4493f8); }
+  .channel-card.voice::before { background: linear-gradient(90deg, var(--green), #2da44e); }
+  .channel-card.email::before { background: linear-gradient(90deg, var(--orange), #bf8700); }
+  .channel-card.n8n::before   { background: linear-gradient(90deg, var(--purple), #9a6fe8); }
+  .channel-card .ch-icon { font-size: 32px; margin-bottom: 12px; }
+  .channel-card .ch-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .channel-card .ch-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .channel-card .ch-list { margin-top: 14px; list-style: none; }
+  .channel-card .ch-list li {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .channel-card .ch-list li:last-child { border-bottom: none; }
+  .channel-card .ch-list li::before { content: "→"; color: var(--accent); font-weight: bold; }
+
+  /* ── Pipeline Steps ─────────────────────────────────────────────────────── */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    counter-reset: step;
+  }
+  .pipeline-step {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    gap: 0;
+    position: relative;
+  }
+  .pipeline-step:not(:last-child) .step-line {
+    position: absolute;
+    left: 26px;
+    top: 52px;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .step-num {
+    width: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 4px;
+    position: relative;
+    z-index: 1;
+  }
+  .step-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: var(--accent);
+    flex-shrink: 0;
+  }
+  .step-body {
+    padding: 0 0 36px 16px;
+  }
+  .step-body .st-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; padding-top: 6px; }
+  .step-body .st-desc  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .step-body code {
+    font-family: "SF Mono", "Fira Code", monospace;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  /* ── Features Grid ─────────────────────────────────────────────────────── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+  }
+  .feature-card .fc-icon { font-size: 28px; margin-bottom: 12px; }
+  .feature-card .fc-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .feature-card .fc-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .feature-card .fc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .feature-card .fc-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  /* ── Tenant isolation visual ───────────────────────────────────────────── */
+  .isolation-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .tenant-box {
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .tenant-box .t-name { font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+  .tenant-box .t-item {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 5px 8px;
+    margin: 4px 0;
+  }
+
+  /* ── Endpoints table ───────────────────────────────────────────────────── */
+  .ep-table { width: 100%; border-collapse: collapse; }
+  .ep-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ep-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(48,54,61,.6);
+    vertical-align: middle;
+  }
+  .ep-table tr:last-child td { border-bottom: none; }
+  .ep-table tr:hover td { background: var(--surface2); }
+  .method {
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .method.get    { background: rgba(63,185,80,.2);  color: var(--green); }
+  .method.post   { background: rgba(88,166,255,.2); color: var(--accent); }
+  .method.ws     { background: rgba(188,140,255,.2);color: var(--purple); }
+  .ep-path { font-family: monospace; color: var(--text); font-size: 12px; }
+
+
+  /* ── n8n Integration diagram ────────────────────────────────────────────── */
+  .n8n-flow {
+    display: grid;
+    grid-template-columns: 1fr 30px 1fr 30px 1fr;
+    align-items: center;
+    gap: 8px;
+  }
+  .n8n-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+  }
+  .n8n-box.agent { border-color: var(--accent); }
+  .n8n-box.n8n   { border-color: var(--purple); background: rgba(188,140,255,.05); }
+  .n8n-box .nb-icon  { font-size: 24px; margin-bottom: 8px; }
+  .n8n-box .nb-title { font-size: 13px; font-weight: 700; }
+  .n8n-box .nb-items { margin-top: 10px; }
+  .n8n-box .nb-item  { font-size: 11px; color: var(--muted); padding: 3px 0; }
+  .n8n-arrow { text-align: center; color: var(--muted); font-size: 20px; }
+  .n8n-workflows {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .wf-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--purple);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .wf-card .wf-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .wf-card .wf-flow  { font-size: 12px; color: var(--muted); font-family: monospace; }
+
+  /* ── Footer ─────────────────────────────────────────────────────────────── */
+  .footer {
+    margin-top: 80px;
+    padding: 32px 40px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .footer strong { color: var(--text); }
+
+  /* ── Scroll animations ──────────────────────────────────────────────────── */
+  @media print {
+    body { background: white; color: black; }
+    .hero { background: #f6f8fa; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- HERO                                                                    -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="badge">Production Architecture · February 2026</div>
+  <h1>AI Customer Support Agent Platform</h1>
+  <p>
+    A multi-tenant, multi-channel AI support platform powered by LangGraph, RAG, and n8n automation.
+    Handles chat, voice, and email with smart escalation and automated workflow orchestration.
+  </p>
+  <div class="hero-pills">
+    <span class="pill green">✓ 3 Channels</span>
+    <span class="pill blue">✓ Multi-Tenant RAG</span>
+    <span class="pill purple">✓ n8n Automation</span>
+    <span class="pill orange">✓ LangGraph ReAct</span>
+    <span class="pill green">✓ Dual Escalation</span>
+    <span class="pill blue">✓ Free-Tier Stack</span>
+  </div>
+</section>
+
+<div class="page">
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 1. TECH STACK                                                           -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-header">
+    <div class="num">1</div>
+    <div>
+      <h2>Technology Stack</h2>
+      <div class="sub">Every component and its role in the system</div>
+    </div>
+  </div>
+
+  <div class="tech-grid">
+
+    <div class="tech-item">
+      <span class="icon">⚡</span>
+      <div class="name">FastAPI</div>
+      <div class="role">Async web framework. HTTP REST, WebSocket, and webhook endpoints.</div>
+      <span class="tag tag-core">Core</span>
+    </div>
+
+    <div class="tech-item">
+      <span class="icon">🧠</span>
+      <div class="name">LangGraph</div>
+      <div class="role">ReAct agent orchestration. Iterative tool-calling loop (up to 4 turns).</div>
+      <span class="tag tag-core">Core</span>
+    </div>
+
+    <div class="tech-item">
+      <span class="icon">🦙</span>
+      <div class="name">Groq LLM</div>
+      <div class="role">llama-3.3-70b-versatile. Primary LLM inference engine. Free tier.</div>
+      <span class="tag tag-free">Free</span>
+    </div>
+
+    <div class="tech-item">
+      <span class="icon">💎</span>
+      <div class="name">Google Gemini</div>
+      <div class="role">gemini-2.0-flash. Fallback LLM when Groq is unavailable.</div>
+      <span class="tag tag-free">Fallback</span>
+    </div>
+
+    <div class="tech-item">
+      <span class="icon">🗃️</span>
+      <div class="name">ChromaDB</div>
+      <div class="role">Local vector store. Per-tenant collection isolation. Persisted to disk.</div>
+      <span class="tag tag-free">Free</span>
+    </div>
+
+    <div class="tech-item">
+      <span class="icon">🔍</span>
+      <div class="name">all-MiniLM-L6-v2</div>
+      <div class="role">Sentence embeddings. 384 dimensions. CPU-local, no API cost.</div>
+      <span class="tag tag-free">Free</span>
+    </div>
+
+    <div class="tech-item">
+      <span class="icon">🗄️</span>
+      <div class="name">SQLite + aiosqlite</div>
+      <div class="role">Session, message, and tenant storage. Zero-config, file-based.</div>
+      <span class="tag tag-free">Free</span>
+    </div>
+
+    <div class="tech-item">
+      <span class="icon">📞</span>
+      <div class="name">Twilio</div>
+      <div class="role">Voice channel. TwiML webhooks for inbound calls and IVR flows.</div>
+      <span class="tag tag-prod">Voice</span>
+    </div>
+
+    <div class="tech-item">
+      <span class="icon">📧</span>
+      <div class="name">Gmail IMAP/SMTP</div>
+      <div class="role">Email channel. Polls inbox every 60s, auto-replies with AI response.</div>
+      <span class="tag tag-prod">Email</span>
+    </div>
+
+    <div class="tech-item" style="border-color: rgba(188,140,255,.4); background: rgba(188,140,255,.05);">
+      <span class="icon">🔀</span>
+      <div class="name">n8n</div>
+      <div class="role">Workflow automation. Receives escalation webhooks, routes to Slack / Zendesk / email.</div>
+      <span class="tag tag-new">New</span>
+    </div>
+
+    <div class="tech-item">
+      <span class="icon">📊</span>
+      <div class="name">structlog</div>
+      <div class="role">Structured JSON logging with session_id and tenant_id context.</div>
+      <span class="tag tag-core">Observability</span>
+    </div>
+
+    <div class="tech-item">
+      <span class="icon">🐳</span>
+      <div class="name">Docker Compose</div>
+      <div class="role">One-command stack. API + n8n, volumes for ChromaDB and SQLite.</div>
+      <span class="tag tag-core">Infra</span>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 2. SYSTEM ARCHITECTURE FLOW                                             -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-header">
+    <div class="num">2</div>
+    <div>
+      <h2>System Architecture</h2>
+      <div class="sub">End-to-end data flow from customer message to response</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 0;">
+
+    <!-- Column 1: Inbound channels -->
+    <div>
+      <div class="card-title" style="text-align:center; padding:0 0 12px;">📥 INBOUND CHANNELS</div>
+      <div class="flow-box" style="margin-bottom:8px;">
+        <div class="fb-icon">💬</div>
+        <div class="fb-title">Web Chat</div>
+        <div class="fb-sub">WebSocket · POST /chat/message</div>
+      </div>
+      <div class="flow-box" style="margin-bottom:8px;">
+        <div class="fb-icon">📞</div>
+        <div class="fb-title">Voice / Twilio</div>
+        <div class="fb-sub">TwiML webhook · /api/twilio/voice</div>
+      </div>
+      <div class="flow-box">
+        <div class="fb-icon">📧</div>
+        <div class="fb-title">Email</div>
+        <div class="fb-sub">Gmail IMAP poll · every 60s</div>
+      </div>
+    </div>
+
+    <!-- Column 2: AI Brain -->
+    <div>
+      <div class="card-title" style="text-align:center; padding:0 0 12px;">🧠 AI PROCESSING CORE</div>
+      <div class="flow-box highlight" style="margin-bottom:8px;">
+        <div class="fb-icon">🚪</div>
+        <div class="fb-title">FastAPI Router</div>
+        <div class="fb-sub">Validates JWT · Loads tenant config · Creates/loads session</div>
+      </div>
+      <div class="flow-box highlight" style="margin-bottom:8px;">
+        <div class="fb-icon">🔄</div>
+        <div class="fb-title">LangGraph ReAct Agent</div>
+        <div class="fb-sub">Iterative reasoning · Up to 4 tool-call turns · decides KB search vs. direct reply</div>
+      </div>
+      <div class="flow-box highlight" style="margin-bottom:8px;">
+        <div class="fb-icon">🔍</div>
+        <div class="fb-title">RAG — ChromaDB</div>
+        <div class="fb-sub">Per-tenant namespace · MMR retrieval · top-4 chunks · MiniLM embeddings</div>
+      </div>
+      <div class="flow-box highlight">
+        <div class="fb-icon">⚠️</div>
+        <div class="fb-title">Dual Escalation Engine</div>
+        <div class="fb-sub">Layer 1: LLM tool · Layer 2: safety regex rules</div>
+      </div>
+    </div>
+
+    <!-- Column 3: Outputs -->
+    <div>
+      <div class="card-title" style="text-align:center; padding:0 0 12px;">📤 OUTPUTS & AUTOMATION</div>
+      <div class="flow-box green-box" style="margin-bottom:8px;">
+        <div class="fb-icon">💬</div>
+        <div class="fb-title">AI Response</div>
+        <div class="fb-sub">Streamed tokens → WebSocket frame or HTTP JSON</div>
+      </div>
+      <div class="flow-box green-box" style="margin-bottom:8px;">
+        <div class="fb-icon">🗄️</div>
+        <div class="fb-title">Session Persisted</div>
+        <div class="fb-sub">SQLite: session + message history · In-memory cache for latency</div>
+      </div>
+      <div class="flow-box new-n8n" style="margin-bottom:8px;">
+        <div class="fb-icon">🔀</div>
+        <div class="fb-title">n8n Automation</div>
+        <div class="fb-sub">Webhook fired on escalation → Slack · Email · Zendesk</div>
+      </div>
+      <div class="flow-box green-box">
+        <div class="fb-icon">📊</div>
+        <div class="fb-title">Structured Logs</div>
+        <div class="fb-sub">structlog · JSON · session_id + tenant_id context on every line</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 3. CHANNELS                                                             -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-header">
+    <div class="num">3</div>
+    <div>
+      <h2>Channel Architecture</h2>
+      <div class="sub">Four independent channels, one shared agent brain</div>
+    </div>
+  </div>
+
+  <div class="channels-grid">
+
+    <div class="channel-card chat">
+      <div class="ch-icon">💬</div>
+      <div class="ch-name">Web Chat</div>
+      <div class="ch-desc">Real-time bidirectional WebSocket with streaming token delivery. HTTP fallback for environments that block WS.</div>
+      <ul class="ch-list">
+        <li>WebSocket: <code>/chat/ws/{tenant}/{customer}</code></li>
+        <li>HTTP fallback: <code>POST /chat/message</code></li>
+        <li>Two-frame response (message → done + latency)</li>
+        <li>Session state across browser refresh</li>
+        <li>JWT token auth per tenant</li>
+      </ul>
+    </div>
+
+    <div class="channel-card voice">
+      <div class="ch-icon">📞</div>
+      <div class="ch-name">Voice / Twilio</div>
+      <div class="ch-desc">Twilio TwiML webhooks drive inbound call handling. AI generates TwiML response to speak back to the caller.</div>
+      <ul class="ch-list">
+        <li>TwiML webhook: <code>POST /api/twilio/voice</code></li>
+        <li>Voice-specific short prompts (&lt; 2 sentences)</li>
+        <li>Conversational, no bullet points</li>
+        <li>IVR fallback for complex issues</li>
+        <li>Webhook signature validation</li>
+      </ul>
+    </div>
+
+    <div class="channel-card email">
+      <div class="ch-icon">📧</div>
+      <div class="ch-name">Email</div>
+      <div class="ch-desc">Polls Gmail IMAP inbox every 60 seconds, processes unread support emails, and auto-replies via SMTP.</div>
+      <ul class="ch-list">
+        <li>Gmail IMAP polling (async with executor)</li>
+        <li>Email-specific prompt: formal, structured</li>
+        <li>Full paragraphs with proper formatting</li>
+        <li>Thread context preserved</li>
+        <li>Escalation → creates draft for human</li>
+      </ul>
+    </div>
+
+    <div class="channel-card n8n">
+      <div class="ch-icon">🔀</div>
+      <div class="ch-name">n8n Automation</div>
+      <div class="ch-desc">n8n sits alongside the agent as an automation layer — receives escalation webhooks and drives downstream integrations.</div>
+      <ul class="ch-list">
+        <li>Receives escalation events via webhook</li>
+        <li>Routes to Slack / email / Zendesk</li>
+        <li>Calls back to <code>POST /n8n/ticket-resolved</code></li>
+        <li>Can trigger KB re-ingestion from Drive</li>
+        <li>Visual workflow editor at :5678</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 4. REQUEST PIPELINE                                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-header">
+    <div class="num">4</div>
+    <div>
+      <h2>Request Processing Pipeline</h2>
+      <div class="sub">Step-by-step trace of a chat message through the system</div>
+    </div>
+  </div>
+
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="step-line"></div>
+      <div class="step-num"><div class="step-circle">1</div></div>
+      <div class="step-body">
+        <div class="st-title">Customer sends message</div>
+        <div class="st-desc">
+          WebSocket frame arrives at <code>POST /chat/message</code> or <code>/chat/ws/{tenant_id}/{customer_id}</code>.
+          FastAPI validates the Pydantic <code>ChatRequest</code> schema. JWT token is verified against tenant record.
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-line"></div>
+      <div class="step-num"><div class="step-circle">2</div></div>
+      <div class="step-body">
+        <div class="st-title">Session loaded / created</div>
+        <div class="st-desc">
+          <code>SessionService.get_or_create()</code> looks up <code>ConversationSession</code> in SQLite.
+          Last 20 messages pulled as <code>HumanMessage / AIMessage</code> objects for the LLM context window.
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-line"></div>
+      <div class="step-num"><div class="step-circle">3</div></div>
+      <div class="step-body">
+        <div class="st-title">LangGraph ReAct loop starts</div>
+        <div class="st-desc">
+          <code>create_react_agent(llm, tools)</code> receives the message + history.
+          LLM decides: should it call <code>search_knowledge_base</code>, call <code>escalate_to_human</code>,
+          or respond directly? Repeats up to 4 iterations.
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-line"></div>
+      <div class="step-num"><div class="step-circle">4</div></div>
+      <div class="step-body">
+        <div class="st-title">RAG retrieval (if tool called)</div>
+        <div class="st-desc">
+          <code>search_knowledge_base(query)</code> calls <code>retrieve(query, tenant_id)</code>.
+          ChromaDB performs cosine similarity search on the <strong>tenant-isolated</strong> collection
+          (<code>tenant_{id}</code>). Returns top-4 chunks via MMR (Max Marginal Relevance) to avoid duplicates.
+          Chunks are appended as a <code>ToolMessage</code> for the next LLM iteration.
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-line"></div>
+      <div class="step-num"><div class="step-circle">5</div></div>
+      <div class="step-body">
+        <div class="st-title">LLM generates final response</div>
+        <div class="st-desc">
+          With KB context available, Groq (<code>llama-3.3-70b-versatile</code>) generates the answer,
+          grounded strictly in retrieved content. Temperature = 0.1 for consistency.
+          Channel-specific prompt (voice: &lt;2 sentences · email: full paragraphs).
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-line"></div>
+      <div class="step-num"><div class="step-circle">6</div></div>
+      <div class="step-body">
+        <div class="st-title">Escalation safety net runs</div>
+        <div class="st-desc">
+          <strong>Layer 1 (LLM-driven):</strong> LLM may call <code>escalate_to_human(reason, urgency)</code> mid-loop.
+          <strong>Layer 2 (Rule-based safety net):</strong> <code>EscalationEngine</code> checks regex patterns
+          (fire, smoke, legal, "speak to human") on the user's message <em>after</em> the LLM responds.
+          Either layer can trigger escalation independently.
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-line"></div>
+      <div class="step-num"><div class="step-circle">7</div></div>
+      <div class="step-body">
+        <div class="st-title">n8n webhook fired (on escalation)</div>
+        <div class="st-desc">
+          <code>asyncio.create_task(n8n_client.notify_escalation(...))</code> fires a non-blocking POST
+          to <code>http://n8n:5678/webhook/ai-agent-escalation</code>. n8n workflow routes based on
+          urgency: high → #support-urgent Slack + email · normal → #support-queue Slack.
+          Agent never waits for n8n — escalation succeeds even if n8n is down.
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-num"><div class="step-circle">8</div></div>
+      <div class="step-body">
+        <div class="st-title">Response streamed + session saved</div>
+        <div class="st-desc">
+          Chat: two WebSocket frames — <code>{type:"message", content:"..."}</code> then
+          <code>{type:"done", escalated:false, latency_ms:1240}</code>.
+          Message persisted to SQLite. structlog writes JSON line with tenant_id, session_id, latency.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 5. n8n INTEGRATION                                                      -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-header">
+    <div class="num">5</div>
+    <div>
+      <h2>n8n Workflow Automation Layer</h2>
+      <div class="sub">Bidirectional integration — agent fires webhooks, n8n calls back</div>
+    </div>
+  </div>
+
+  <div class="n8n-flow">
+    <div class="n8n-box agent">
+      <div class="nb-icon">🤖</div>
+      <div class="nb-title">AI Support Agent<br><small style="color:var(--muted);font-size:11px;">FastAPI · :8001</small></div>
+      <div class="nb-items">
+        <div class="nb-item">POST /n8n/ticket-resolved</div>
+        <div class="nb-item">POST /n8n/ingest-trigger</div>
+        <div class="nb-item">GET  /n8n/escalations</div>
+        <div class="nb-item">GET  /n8n/status</div>
+      </div>
+    </div>
+    <div class="n8n-arrow">⇄</div>
+    <div class="n8n-box n8n">
+      <div class="nb-icon">🔀</div>
+      <div class="nb-title">n8n<br><small style="color:var(--muted);font-size:11px;">Workflow Engine · :5678</small></div>
+      <div class="nb-items">
+        <div class="nb-item">Webhook listener</div>
+        <div class="nb-item">If/condition routing</div>
+        <div class="nb-item">HTTP Request nodes</div>
+        <div class="nb-item">Schedule triggers</div>
+      </div>
+    </div>
+    <div class="n8n-arrow">→</div>
+    <div class="n8n-box">
+      <div class="nb-icon">🌐</div>
+      <div class="nb-title">External Services</div>
+      <div class="nb-items">
+        <div class="nb-item">Slack channels</div>
+        <div class="nb-item">Zendesk tickets</div>
+        <div class="nb-item">Email (SMTP)</div>
+        <div class="nb-item">Google Drive</div>
+        <div class="nb-item">CRM systems</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="n8n-workflows">
+    <div class="wf-card">
+      <div class="wf-title">📋 Escalation → Slack + Email</div>
+      <div class="wf-flow">
+        Webhook (POST) → Check urgency<br>
+        high → #support-urgent Slack<br>
+        normal → #support-queue Slack<br>
+        → Send email to support team<br>
+        → Callback: mark ticket notified
+      </div>
+    </div>
+    <div class="wf-card">
+      <div class="wf-title">📂 Auto Knowledge Base Ingest</div>
+      <div class="wf-flow">
+        Schedule trigger (every 10 min)<br>
+        → List new PDFs in Google Drive<br>
+        → POST /n8n/ingest-trigger<br>
+        → Agent ingests → ChromaDB<br>
+        → KB always up-to-date
+      </div>
+    </div>
+    <div class="wf-card">
+      <div class="wf-title">🎫 Zendesk Ticket Sync</div>
+      <div class="wf-flow">
+        Zendesk webhook (status change)<br>
+        → Filter: resolved tickets only<br>
+        → POST /n8n/ticket-resolved<br>
+        → Agent updates escalation queue<br>
+        → Session marked as resolved
+      </div>
+    </div>
+    <div class="wf-card">
+      <div class="wf-title">📊 Escalation Polling Dashboard</div>
+      <div class="wf-flow">
+        Schedule trigger (every 5 min)<br>
+        → GET /n8n/escalations<br>
+        → Filter pending count > 0<br>
+        → Post summary to #ops-team<br>
+        → Log to Google Sheets
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 6. MULTI-TENANT ISOLATION                                               -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-header">
+    <div class="num">6</div>
+    <div>
+      <h2>Multi-Tenant Data Isolation</h2>
+      <div class="sub">Four independent layers prevent any cross-tenant data leakage</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+
+    <div>
+      <div class="isolation-grid" style="margin-bottom: 20px;">
+        <div class="tenant-box" style="border-color: var(--accent);">
+          <div class="t-name" style="color:var(--accent);">Tenant A<br><small style="color:var(--muted);">Acme Corp</small></div>
+          <div class="t-item">ChromaDB: tenant_acme</div>
+          <div class="t-item">JWT: scope=acme</div>
+          <div class="t-item">SQLite: tenant_id=acme</div>
+        </div>
+        <div class="tenant-box" style="border-color: var(--green);">
+          <div class="t-name" style="color:var(--green);">Tenant B<br><small style="color:var(--muted);">Globex Inc</small></div>
+          <div class="t-item">ChromaDB: tenant_globex</div>
+          <div class="t-item">JWT: scope=globex</div>
+          <div class="t-item">SQLite: tenant_id=globex</div>
+        </div>
+        <div class="tenant-box" style="border-color: var(--orange);">
+          <div class="t-name" style="color:var(--orange);">Tenant C<br><small style="color:var(--muted);">Umbrella</small></div>
+          <div class="t-item">ChromaDB: tenant_umbrella</div>
+          <div class="t-item">JWT: scope=umbrella</div>
+          <div class="t-item">SQLite: tenant_id=umbrella</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">4-Layer Isolation Architecture</div>
+        <div class="pipeline" style="gap:0;">
+          <div style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <strong style="font-size:13px;">Layer 1 — ChromaDB Collection</strong>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px;">
+              Each tenant has a dedicated vector collection. Cross-collection queries are architecturally impossible.
+            </div>
+          </div>
+          <div style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <strong style="font-size:13px;">Layer 2 — Python Closure Lock</strong>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px;">
+              <code>tenant_id</code> is closed over in the tool function at agent creation time. The LLM cannot override it.
+            </div>
+          </div>
+          <div style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <strong style="font-size:13px;">Layer 3 — SQL Filter</strong>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px;">
+              All SQLite queries include <code>WHERE tenant_id = ?</code>. No bare SELECT without tenant context.
+            </div>
+          </div>
+          <div style="padding: 10px 0;">
+            <strong style="font-size:13px;">Layer 4 — JWT Validation</strong>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px;">
+              API key validated against tenant record before request handling begins.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="height:fit-content;">
+      <div class="card-title">Closure-Based Tool Isolation Pattern</div>
+      <pre style="font-size:12px; color:#e6edf3; line-height:1.6; overflow-x:auto; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:16px; font-family:'SF Mono','Fira Code',monospace;">
+<span style="color:#8b949e"># tenant_id is BAKED IN at agent-creation time</span>
+<span style="color:#8b949e"># The LLM receives the tool but CANNOT change tenant_id</span>
+
+<span style="color:#58a6ff">def</span> <span style="color:#d2a8ff">make_search_tool</span>(tenant_id: str):
+
+    <span style="color:#d73a49">@tool</span>
+    <span style="color:#58a6ff">async def</span> <span style="color:#d2a8ff">search_knowledge_base</span>(query: str) -> str:
+        <span style="color:#8b949e">"""Search the company knowledge base."""</span>
+        results = <span style="color:#58a6ff">await</span> retrieve(
+            query=query,
+            tenant_id=tenant_id  <span style="color:#8b949e"># ← CLOSED OVER — immutable</span>
+        )
+        <span style="color:#58a6ff">return</span> format_results(results)
+
+    <span style="color:#58a6ff">return</span> search_knowledge_base
+
+<span style="color:#8b949e"># Agent created per-request with tenant context locked</span>
+agent = create_react_agent(
+    llm=llm,
+    tools=[make_search_tool(tenant_id)]  <span style="color:#8b949e"># ← locked at creation</span>
+)</pre>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 7. KEY FEATURES                                                         -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-header">
+    <div class="num">7</div>
+    <div>
+      <h2>Key Architectural Features</h2>
+      <div class="sub">Design decisions that matter in production</div>
+    </div>
+  </div>
+
+  <div class="features-grid">
+
+    <div class="feature-card">
+      <div class="fc-icon">🔄</div>
+      <div class="fc-title">LangGraph ReAct (Not One-Shot)</div>
+      <div class="fc-body">
+        The agent iterates up to 4 turns per message. It decides whether to search the KB, call a tool, or respond directly.
+        A simple greeting doesn't trigger unnecessary KB queries — the agent knows when to skip retrieval.
+      </div>
+      <div class="fc-tags">
+        <span class="fc-tag">LangGraph</span>
+        <span class="fc-tag">Tool Calling</span>
+        <span class="fc-tag">Efficiency</span>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <div class="fc-icon">🛡️</div>
+      <div class="fc-title">Dual Escalation System</div>
+      <div class="fc-body">
+        Layer 1: LLM uses <code>escalate_to_human</code> tool mid-reasoning for complex issues.
+        Layer 2: Safety regex runs <em>after</em> LLM responds — catches keywords like "fire", "smoke", "legal" that must always escalate regardless of LLM decision.
+      </div>
+      <div class="fc-tags">
+        <span class="fc-tag">Safety-Critical</span>
+        <span class="fc-tag">Rules + LLM</span>
+        <span class="fc-tag">Defense-in-Depth</span>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <div class="fc-icon">🎯</div>
+      <div class="fc-title">MMR Retrieval (No Duplicates)</div>
+      <div class="fc-body">
+        ChromaDB uses Maximal Marginal Relevance (lambda=0.7) — balances relevance with diversity.
+        Fetches 20 candidates, returns top 4 that are both relevant AND non-redundant. LLM context stays clean.
+      </div>
+      <div class="fc-tags">
+        <span class="fc-tag">ChromaDB</span>
+        <span class="fc-tag">MMR</span>
+        <span class="fc-tag">RAG Quality</span>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <div class="fc-icon">⚡</div>
+      <div class="fc-title">WebSocket Two-Frame Protocol</div>
+      <div class="fc-body">
+        Chat responses use two frames: <code>{type:"message", content:"..."}</code> then <code>{type:"done", escalated:false, latency_ms:1240}</code>.
+        UI can render the message immediately while metadata (latency, escalation flag) arrives asynchronously.
+      </div>
+      <div class="fc-tags">
+        <span class="fc-tag">WebSocket</span>
+        <span class="fc-tag">Low Latency</span>
+        <span class="fc-tag">Streaming</span>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <div class="fc-icon">🔀</div>
+      <div class="fc-title">n8n as Automation Backbone</div>
+      <div class="fc-body">
+        n8n receives escalation webhooks and drives Slack/email/Zendesk routing without code changes.
+        Adding a new integration (PagerDuty, Jira, Teams) requires only a new n8n workflow — zero Python changes.
+        Failure-tolerant: agent escalation succeeds even if n8n is unreachable.
+      </div>
+      <div class="fc-tags">
+        <span class="fc-tag">n8n</span>
+        <span class="fc-tag">No-Code Integrations</span>
+        <span class="fc-tag">Fault-Tolerant</span>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <div class="fc-icon">💰</div>
+      <div class="fc-title">Free-Tier First Design</div>
+      <div class="fc-body">
+        Groq free tier (llama-3.3-70b), ChromaDB local, SQLite, MiniLM embeddings (CPU), n8n self-hosted.
+        Production-ready architecture with zero cloud cost during development. Swap to Pinecone + OpenAI when ready.
+      </div>
+      <div class="fc-tags">
+        <span class="fc-tag">Groq</span>
+        <span class="fc-tag">ChromaDB</span>
+        <span class="fc-tag">$0 Dev Cost</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 8. API ENDPOINTS                                                        -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-header">
+    <div class="num">8</div>
+    <div>
+      <h2>API Surface</h2>
+      <div class="sub">Complete endpoint reference — all accessible at <code>http://localhost:8001/docs</code></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <table class="ep-table">
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Path</th>
+          <th>Purpose</th>
+          <th>Channel</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td class="ep-path">/health</td>
+          <td>System health + LLM provider info</td>
+          <td style="color:var(--muted);font-size:12px;">All</td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td class="ep-path">/chat/message</td>
+          <td>HTTP chat (no WebSocket)</td>
+          <td style="color:var(--muted);font-size:12px;">Chat</td>
+        </tr>
+        <tr>
+          <td><span class="method ws">WS</span></td>
+          <td class="ep-path">/chat/ws/{tenant_id}/{customer_id}</td>
+          <td>Real-time WebSocket chat with streaming</td>
+          <td style="color:var(--muted);font-size:12px;">Chat</td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td class="ep-path">/admin/tenants</td>
+          <td>Create a new tenant</td>
+          <td style="color:var(--muted);font-size:12px;">Admin</td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td class="ep-path">/admin/tenants/{id}/knowledge</td>
+          <td>Upload documents to knowledge base</td>
+          <td style="color:var(--muted);font-size:12px;">Admin</td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td class="ep-path">/api/twilio/voice/incoming</td>
+          <td>Twilio inbound call webhook</td>
+          <td style="color:var(--muted);font-size:12px;">Voice</td>
+        </tr>
+        <tr style="background: rgba(188,140,255,.04);">
+          <td><span class="method get">GET</span></td>
+          <td class="ep-path">/n8n/status</td>
+          <td>n8n connectivity health check</td>
+          <td style="color:var(--purple);font-size:12px;">n8n</td>
+        </tr>
+        <tr style="background: rgba(188,140,255,.04);">
+          <td><span class="method get">GET</span></td>
+          <td class="ep-path">/n8n/escalations</td>
+          <td>Pending escalation queue for n8n polling</td>
+          <td style="color:var(--purple);font-size:12px;">n8n</td>
+        </tr>
+        <tr style="background: rgba(188,140,255,.04);">
+          <td><span class="method post">POST</span></td>
+          <td class="ep-path">/n8n/ticket-resolved</td>
+          <td>n8n marks a ticket resolved after human handles it</td>
+          <td style="color:var(--purple);font-size:12px;">n8n</td>
+        </tr>
+        <tr style="background: rgba(188,140,255,.04);">
+          <td><span class="method post">POST</span></td>
+          <td class="ep-path">/n8n/ingest-trigger</td>
+          <td>n8n triggers KB re-ingestion from external source</td>
+          <td style="color:var(--purple);font-size:12px;">n8n</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 9. RUNNING THE SYSTEM                                                   -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-header">
+    <div class="num">9</div>
+    <div>
+      <h2>Running the System</h2>
+      <div class="sub">From zero to running demo in 3 commands</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+    <div class="card">
+      <div class="card-title">Option A — Full Stack (Docker)</div>
+      <pre style="font-size:12px; color:#e6edf3; line-height:1.9; font-family:'SF Mono','Fira Code',monospace;">
+<span style="color:#8b949e"># Start API + n8n together</span>
+docker compose up -d
+
+<span style="color:#8b949e"># Agent API</span>
+<span style="color:#3fb950">open http://localhost:8001</span>        <span style="color:#8b949e"># Demo UI</span>
+<span style="color:#3fb950">open http://localhost:8001/docs</span>   <span style="color:#8b949e"># Swagger</span>
+
+<span style="color:#8b949e"># n8n Workflow Editor</span>
+<span style="color:#bc8cff">open http://localhost:5678</span>
+<span style="color:#8b949e"># Login: admin / changeme
+# Import from: n8n_workflows/</span></pre>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Option B — Dev Mode (Local Python)</div>
+      <pre style="font-size:12px; color:#e6edf3; line-height:1.9; font-family:'SF Mono','Fira Code',monospace;">
+<span style="color:#8b949e"># Uses C:/Python312/python.exe (4 installs on machine)</span>
+C:/Python312/python.exe -m uvicorn \
+  app.main:app \
+  --host 0.0.0.0 \
+  --port 8001
+
+<span style="color:#8b949e"># Test health</span>
+curl http://localhost:8001/health
+
+<span style="color:#8b949e"># n8n separately (disable in .env if not needed)</span>
+<span style="color:#d29922">N8N_ENABLED=false</span>  <span style="color:#8b949e"># skips webhooks silently</span></pre>
+    </div>
+
+  </div>
+
+  <div class="card" style="margin-top: 16px;">
+    <div class="card-title">Required .env Keys</div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size:13px;">
+      <div>
+        <div style="color:var(--accent); font-weight:700; margin-bottom:8px;">LLM (Required)</div>
+        <div style="font-family:monospace; font-size:12px; color:var(--muted); line-height:2;">
+          GROQ_API_KEY=gsk_...<br>
+          LLM_PROVIDER=groq<br>
+          GROQ_MODEL=llama3-8b-8192
+        </div>
+      </div>
+      <div>
+        <div style="color:var(--purple); font-weight:700; margin-bottom:8px;">n8n (Optional)</div>
+        <div style="font-family:monospace; font-size:12px; color:var(--muted); line-height:2;">
+          N8N_BASE_URL=http://localhost:5678<br>
+          N8N_ENABLED=true<br>
+          N8N_API_KEY=<em>(leave blank)</em>
+        </div>
+      </div>
+      <div>
+        <div style="color:var(--green); font-weight:700; margin-bottom:8px;">Database (Auto)</div>
+        <div style="font-family:monospace; font-size:12px; color:var(--muted); line-height:2;">
+          DATABASE_URL=sqlite+aiosqlite:///./support_agent.db<br>
+          CHROMA_PERSIST_DIRECTORY=./chroma_data
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- FOOTER                                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="footer">
+  <strong>AI Customer Support Agent Platform</strong> · Obeikan Digital Solutions<br>
+  <span style="margin-top:8px; display:block;">
+    Stack: FastAPI · LangGraph · Groq · ChromaDB · SQLite · n8n · Twilio · Gmail · Docker
+  </span>
+  <span style="margin-top:6px; display:block; font-size:12px;">
+    February 2026 · Built for production multi-tenant deployments
+  </span>
+</div>
+
+</div><!-- /page -->
+
+<script>
+  // Smooth appear on scroll
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) e.target.style.opacity = '1';
+    });
+  }, { threshold: 0.05 });
+
+  document.querySelectorAll('.section, .tech-item, .channel-card, .feature-card').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 0.4s ease';
+    observer.observe(el);
+  });
+</script>
+</body>
+</html>
