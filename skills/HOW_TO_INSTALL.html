@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to Install the AI Docs Skill in Antigravity</title>
+<style>
+  :root {
+    --bg: #ffffff; --surface: #f6f8fa; --surface2: #eef1f5;
+    --border: #d0d7de; --text: #1f2328; --muted: #57606a;
+    --accent: #0969da; --accent2: #1a7f37; --accent3: #8250df;
+    --accent4: #bc4c00; --accent5: #cf222e; --code-bg: #f6f8fa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.7; padding: 3rem 2rem; max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 1.9rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text); }
+  h2 { font-size: 1.2rem; font-weight: 700; margin: 2rem 0 0.8rem; color: var(--accent); }
+  p { margin-bottom: 0.8rem; color: var(--muted); font-size: 0.95rem; }
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+          padding: 1.2rem; margin: 1rem 0; display: flex; gap: 1rem; align-items: flex-start; }
+  .step-num { background: var(--accent); color: white; border-radius: 50%; width: 32px; height: 32px;
+              display: flex; align-items: center; justify-content: center; font-weight: 700;
+              font-size: 0.9rem; flex-shrink: 0; }
+  .step-content h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .step-content p { margin: 0; font-size: 0.88rem; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+        padding: 1rem; font-size: 0.82rem; overflow-x: auto; margin: 0.5rem 0; font-family: 'Courier New', monospace; }
+  .alert { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid var(--accent2);
+           border-radius: 0 8px 8px 0; padding: 1rem; margin: 1.5rem 0; font-size: 0.9rem; color: #14532d; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem;
+          font-weight: 600; background: #dbeafe; color: #1e40af; margin: 2px; }
+  .what-you-get { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1.5rem 0; }
+  .wyg-header { background: var(--surface2); padding: 0.8rem 1.2rem; font-weight: 700; font-size: 0.9rem;
+                border-bottom: 1px solid var(--border); }
+  .wyg-row { padding: 0.7rem 1.2rem; border-bottom: 1px solid var(--surface2); font-size: 0.88rem;
+             display: flex; gap: 1rem; align-items: flex-start; }
+  .wyg-row:last-child { border-bottom: none; }
+  .wyg-icon { flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:1rem 1.2rem;margin-bottom:2rem">
+  <strong style="color:#1e40af">🎯 What this skill does:</strong>
+  <span style="color:#1e3a5f;font-size:0.9rem"> Every time you ask Claude to document something, it will automatically generate white-background HTML files using the professional style from your <code>4_layer_framework.html</code> — not dark markdown.</span>
+</div>
+
+<h1>How to Install the AI Docs Skill</h1>
+<p>This skill teaches Claude inside Antigravity to always generate documentation in the style you love — white background, professional HTML, with code examples, tool comparisons, and architect's reasoning for every decision.</p>
+
+<h2>Step 1 — Find the skill folder</h2>
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-content">
+    <h3>Locate <code>skill-ai-docs/</code> in your workspace folder</h3>
+    <p>It was created inside your project folder alongside your other documentation files. It contains one file: <code>SKILL.md</code></p>
+    <pre>your-project/
+├── 4_layer_framework.html        ← white bg HTML (reference)
+├── all_files.html                ← 7-topic deep dive
+├── SOLUTION_ARCHITECT_FUNDAMENTALS.md
+├── skill-ai-docs/               ← 📁 THE SKILL FOLDER
+│   ├── SKILL.md                 ← skill instructions
+│   └── HOW_TO_INSTALL.html      ← this file</pre>
+  </div>
+</div>
+
+<h2>Step 2 — Copy to Antigravity's skills directory</h2>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <h3>Option A — Antigravity has a skills UI</h3>
+    <p>Open Antigravity → Settings → Skills (or Plugins) → "Add Skill" or "Import Skill" → point to the <code>skill-ai-docs/</code> folder.</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <h3>Option B — Copy manually (Mac/Linux)</h3>
+    <pre># Find where Antigravity stores skills — try these locations:
+ls ~/.antigravity/skills/
+ls ~/.config/antigravity/skills/
+ls ~/Library/Application\ Support/Antigravity/skills/
+
+# Copy the skill folder there:
+cp -r /path/to/your/project/skill-ai-docs/ ~/.antigravity/skills/</pre>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <h3>Option C — Claude Code / Cowork (already works here!)</h3>
+    <p>If you're in Cowork mode (which you are right now), skills work differently — the instructions live in the SKILL.md and Claude reads them automatically when you ask for documentation.</p>
+    <p>To make it available in Cowork permanently: copy the <code>skill-ai-docs/</code> folder to your <code>.skills/skills/</code> directory inside your workspace.</p>
+  </div>
+</div>
+
+<h2>Step 3 — Restart Antigravity</h2>
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-content">
+    <h3>Reload skills</h3>
+    <p>After copying, restart Antigravity or reload skills (Settings → Skills → Refresh). The skill will appear as "ai-docs" in the skills list.</p>
+  </div>
+</div>
+
+<h2>Step 4 — Test it</h2>
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-content">
+    <h3>Ask Claude to document something</h3>
+    <p>Try any of these prompts — Claude will automatically use the skill and generate properly styled HTML:</p>
+    <pre>"create a file explaining my FastAPI app architecture"
+"document this codebase as HTML"
+"explain the 4 layers of this system with examples"
+"make a white background HTML guide for [any topic]"
+"create docs with architect decisions and tool comparisons"</pre>
+  </div>
+</div>
+
+<h2>What you'll always get</h2>
+<div class="what-you-get">
+  <div class="wyg-header">Every documentation request will produce:</div>
+  <div class="wyg-row"><div class="wyg-icon">🎨</div><div><strong>White background HTML</strong> — light theme, professional, browser-renderable. No more dark IDE colors.</div></div>
+  <div class="wyg-row"><div class="wyg-icon">🏗️</div><div><strong>4-layer structure</strong> — Interface → Orchestration → Knowledge → Infrastructure. Consistent across every project.</div></div>
+  <div class="wyg-row"><div class="wyg-icon">💻</div><div><strong>Code examples for every concept</strong> — no concept without code. Comments explain WHY, not just what.</div></div>
+  <div class="wyg-row"><div class="wyg-icon">🔧</div><div><strong>Tool comparison tables</strong> — at every layer, shows the chosen tool, alternatives, and the architect's reason for choosing.</div></div>
+  <div class="wyg-row"><div class="wyg-icon">🗺️</div><div><strong>End-to-end pipeline trace</strong> — a single request traced through all 4 layers with latency breakdown.</div></div>
+  <div class="wyg-row"><div class="wyg-icon">✅</div><div><strong>Production checklist</strong> — per-layer checklist of what to verify before going live.</div></div>
+</div>
+
+<div class="alert">
+  <strong>✅ Already working in this session</strong><br>
+  The files <code>4_layer_framework.html</code> and <code>all_files.html</code> in your project were generated using exactly this skill's style. They are your reference templates — copy their CSS into any future HTML doc you generate.
+</div>
+
+</body>
+</html>

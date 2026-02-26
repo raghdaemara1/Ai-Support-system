@@ -5,7 +5,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import asyncio
 from app.api.chat import chat_websocket
 from app.models.schemas import ChatRequest
-from app.database.session import AsyncSessionLocal
+from app.models.base import AsyncSessionLocal
 from app.services.tenant_service import TenantService
 from app.agents.support_agent import get_agent_for_channel
 import traceback

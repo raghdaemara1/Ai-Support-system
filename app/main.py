@@ -95,11 +95,37 @@ def create_app() -> FastAPI:
     @app.get("/dataflow", include_in_schema=False)
     async def serve_dataflow():
         """Serve the system dataflow diagram."""
-        path = PROJECT_ROOT / "system_dataflow.html"
-        if path.exists():
-            return FileResponse(str(path), media_type="text/html")
+        candidates = [
+            PROJECT_ROOT / "codex" / "system_dataflow.html",
+            PROJECT_ROOT / "system_dataflow.html",
+            PROJECT_ROOT / "codex" / "ARCHITECTURE_OVERVIEW.html",
+            PROJECT_ROOT / "ARCHITECTURE_OVERVIEW.html",
+        ]
+        for path in candidates:
+            if path.exists():
+                return FileResponse(str(path), media_type="text/html")
         from fastapi.responses import RedirectResponse
         return RedirectResponse("/docs")
+
+    @app.get("/software-dataflow", include_in_schema=False)
+    async def serve_software_dataflow():
+        """Serve codex system dataflow page for the frontend button."""
+        candidates = [
+            PROJECT_ROOT / "codex" / "system_dataflow.html",
+            PROJECT_ROOT / "codex" / "ARCHITECTURE_OVERVIEW.html",
+            PROJECT_ROOT / "system_dataflow.html",
+            PROJECT_ROOT / "ARCHITECTURE_OVERVIEW.html",
+        ]
+        for path in candidates:
+            if path.exists():
+                return FileResponse(str(path), media_type="text/html")
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse("/docs")
+
+    # Backward compatibility for previous typo path.
+    @app.get("/spftware-dataflow", include_in_schema=False)
+    async def serve_spftware_dataflow():
+        return await serve_software_dataflow()
 
     # ── All API routes ────────────────────────────────────────────────────────
     app.include_router(api_router)
