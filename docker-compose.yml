@@ -26,6 +26,40 @@ services:
       timeout: 10s
       retries: 3
 
+  # ── n8n Workflow Automation ────────────────────────────────────────────────
+  # Access the n8n editor at http://localhost:5678
+  # Default login: admin / changeme  (set N8N_BASIC_AUTH_PASSWORD in .env)
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ai_support_n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      # Credentials — change these before going to production
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=changeme
+      # Allow the agent's API to be called from n8n workflows
+      - N8N_ALLOW_EXTERNAL_HOSTS=true
+      # Timezone for cron / schedule triggers
+      - GENERIC_TIMEZONE=Asia/Dubai
+    volumes:
+      # Persist n8n workflows and credentials across restarts
+      - n8n_data:/home/node/.n8n
+      # Mount our workflow templates so they're importable from the editor
+      - ./n8n_workflows:/home/node/n8n_workflows:ro
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5678/healthz" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   data:
   chroma_data:
+  n8n_data:

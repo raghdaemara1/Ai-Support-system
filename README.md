@@ -69,9 +69,10 @@ flowchart LR
         I2["🔐  Identity: JWT / API Keys"]
         I3["📊  Observability: LangSmith"]
         I4["🐳  Deployment: Docker / K8s"]
-        I1 --- I2 --- I3 --- I4
+        I5["⚙️  Workflow: n8n Automation"]
+        I1 --- I2 --- I3 --- I4 --- I5
     end
-    class Integrations,I1,I2,I3,I4 integration
+    class Integrations,I1,I2,I3,I4,I5 integration
 
     Business ~~~ Architecture ~~~ Integrations
 ```
@@ -143,6 +144,16 @@ Large knowledge base uploads (400+ page manuals) are processed via `FastAPI.Back
 ### 7 · Tool-Call Error Recovery
 
 Small open-weight models (Llama 3.3 on Groq) occasionally produce malformed tool-call JSON that bleeds into the response text. The `BaseAgent.invoke()` method applies a layered cleanup sequence — stripping `<function=...>` artifacts, skipping messages that are pure JSON tool-call objects, and returning a degraded-but-valid response rather than a `500` error. The `chat.py` error handler also intercepts `tool_use_failed` (HTTP 400) events from the Groq API, extracts any valid pre-crash text from `failed_generation`, and completes the response without surfacing the failure to the end user.
+
+---
+
+### 8 · n8n Automation & Webhook Callbacks
+
+The platform features two-way integration with **n8n** for advanced workflow automation:
+- **Outbound Webhooks**: Every time an escalation occurs, the agent POSTs a webhook to n8n (`/webhook/ai-agent-escalation`). This enables downstream n8n workflows to route high-urgency issues to Slack, send emails to support teams, or create CRM tickets automatically.
+- **Inbound Endpoints**: n8n can call back into the agent via dedicated REST endpoints (e.g., `/n8n/ticket-resolved`, `/n8n/ingest-trigger`) to mark tickets as resolved or trigger autonomous knowledge base ingestion from external sources like Google Drive.
+
+Pre-configured workflows are included in the `n8n_workflows/` directory.
 
 ---
 

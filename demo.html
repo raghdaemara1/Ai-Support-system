@@ -1279,6 +1279,10 @@
     <div class="pill warn" id="llmPill">
       <div class="dot"></div><span>Groq · llama-3.3-70b</span>
     </div>
+    <div class="pill online" id="n8nPill" style="cursor: pointer"
+      onclick="window.open('http://localhost:5678', '_blank')">
+      <div class="dot"></div><span>n8n Webhooks: ON</span>
+    </div>
     <div class="ep-badge" id="epBadge">—</div>
   </div>
 
@@ -1448,8 +1452,13 @@
         <div class="fn-line">
           <div></div>
         </div>
-        <div class="fn" id="fn7"><span class="fi">✅</span><span style="flex:1">Response Sent</span><span class="ft"
+        <div class="fn" id="fn7"><span class="fi">⚙️</span><span style="flex:1">n8n Workflow</span><span class="ft"
             id="ft7"></span></div>
+        <div class="fn-line">
+          <div></div>
+        </div>
+        <div class="fn" id="fn8"><span class="fi">✅</span><span style="flex:1">Response Sent</span><span class="ft"
+            id="ft8"></span></div>
       </div>
 
       <div class="rp-sec">
@@ -1522,7 +1531,7 @@
     let ws = null;  // WebSocket connection
     let escQueue = [];
 
-    const FLOW_IDS = [0, 1, 2, 3, 4, 5, 6, 7];
+    const FLOW_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
     // ── Boot ──────────────────────────────────────────────────
     window.addEventListener('DOMContentLoaded', async () => {
@@ -1635,6 +1644,11 @@
         await stepFlow(4, 80);
         await stepFlow(5, 150);
         await stepFlow(6, 80);
+        if (resp.escalated) {
+          await stepFlow(7, 300); // simulate webhook delay
+        } else {
+          markDone(7); // skip n8n step entirely if not escalated
+        }
 
         hideTyping();
         setLoading(false);
@@ -1643,8 +1657,8 @@
         if (resp.escalated) { addEscalation(resp.escalation_reason || 'Escalation triggered'); }
 
         addAI(resp.message, resp.escalated, resp.sources || [], ms);
-        doneFlow(7, ms);
-        FLOW_IDS.forEach(i => i < 7 && markDone(i));
+        doneFlow(8, ms);
+        FLOW_IDS.forEach(i => i < 8 && markDone(i));
         updMetrics(ms, resp);
 
       } catch (err) {
@@ -1838,6 +1852,15 @@
           st.textContent = 'Speaking response...';
 
           const utterance = new SpeechSynthesisUtterance(resp.message);
+
+          // Try to select an English voice
+          const voices = speechSynthesis.getVoices();
+          const enVoice = voices.find(v => v.lang.startsWith('en-') && (v.name.includes('Female') || v.name.includes('Google') || v.name.includes('Natural')));
+          if (enVoice) utterance.voice = enVoice;
+
+          utterance.volume = 1.0;
+          utterance.rate = 1.0;
+
           utterance.onend = () => {
             st.textContent = 'Listening... Speak into your microphone';
             if (voiceOn) { recognition.start(); }

@@ -7,6 +7,7 @@ from typing import Literal
 from langchain.tools import tool
 
 from app.core.logging import get_logger
+from app.integrations import n8n_client
 
 logger = get_logger(__name__)
 
@@ -55,6 +56,16 @@ async def _perform_escalation(
         session_id=session_id,
         reason=reason,
         urgency=urgency,
+    )
+
+    # ── Fire n8n webhook (non-blocking — failure never breaks escalation) ──────
+    asyncio.create_task(
+        n8n_client.notify_escalation(
+            ticket_id=ticket_id,
+            session_id=session_id,
+            reason=reason,
+            urgency=urgency,
+        )
     )
 
     return (

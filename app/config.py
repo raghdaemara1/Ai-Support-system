@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     llm_provider: Literal["groq", "google"] = "groq"
     groq_api_key: str = ""
     google_api_key: str = ""
-    groq_model: str = "llama3-8b-8192"
+    groq_model: str = "llama-3.3-70b-versatile"
 
     # Observability (LangSmith)
     langchain_api_key: str = ""
@@ -41,6 +41,13 @@ class Settings(BaseSettings):
 
     # Embeddings
     embedding_model: str = "all-MiniLM-L6-v2"
+
+    # n8n Workflow Automation
+    n8n_base_url: str = "http://localhost:5678"
+    n8n_webhook_escalation: str = "/webhook/ai-agent-escalation"
+    n8n_webhook_new_session: str = "/webhook/ai-agent-new-session"
+    n8n_api_key: str = ""          # n8n API key for calling n8n REST API
+    n8n_enabled: bool = True       # Set False to disable n8n integration silently
 
     # Demo channels
     enable_email_poller: bool = False
