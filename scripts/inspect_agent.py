@@ -1,4 +1,9 @@
 import asyncio
+import sys
+import json
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from app.models.base import get_db
 from app.services.tenant_service import TenantService
 from app.agents.support_agent import get_agent_for_channel

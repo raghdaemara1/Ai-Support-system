@@ -1,5 +1,7 @@
 # Agentic Customer Support Platform
 
+> **📚 Interactive Documentation:** [View the Architecture Overview](ARCHITECTURE_OVERVIEW.html) for a comprehensive visual guide to the system's components, including the new n8n automation layer.
+
 > A production-ready, multi-tenant AI support backend. Autonomous agents handle Voice, Chat, and Email using RAG-grounded responses, deterministic safety escalation, and a Document Intelligence pipeline that transforms unstructured technical manuals into queryable knowledge — with a clear upgrade path to Fortune 500 infrastructure.
 
 ---

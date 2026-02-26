@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 import asyncio
 from app.api.chat import chat_websocket
 from app.models.schemas import ChatRequest

@@ -1,5 +1,8 @@
 import urllib.request
 import json
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 url = "http://localhost:8001/admin/tenants"
 payload = {
