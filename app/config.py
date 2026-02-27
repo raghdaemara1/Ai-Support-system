@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     app_secret_key: str = secrets.token_hex(32)
     app_domain: str = "localhost:8000"
     debug: bool = True
+    allowed_origins: list[str] = ["http://localhost:3000"]
 
     # LLM Provider
     llm_provider: Literal["groq", "google"] = "groq"

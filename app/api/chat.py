@@ -88,9 +88,9 @@ async def chat_websocket(
             history    = await session_service.get_history(session.id)
             start_time = time.time()
 
-            print(f"\n[DEBUG-FLOW] [WS] Received message: '{user_message}' from session: {session.id}")
-            print(f"[DEBUG-FLOW] [WS] Retrieved history. Number of past messages: {len(history)}")
-            print(f"[DEBUG-FLOW] [WS] Invoking Agent (LLM + Tools)...")
+            logger.debug("WS message received", message_preview=user_message[:50], session_id=session.id)
+            logger.debug("WS history retrieved", history_length=len(history))
+            logger.debug("WS invoking agent")
 
             try:
                 # ── LLM call with hard timeout ──────────────────────────────
@@ -98,26 +98,22 @@ async def chat_websocket(
                     agent.invoke(user_input=user_message, history=history),
                     timeout=LLM_TIMEOUT,
                 )
-                print(f"[DEBUG-FLOW] [WS] Agent response received in {time.time() - start_time:.2f}s")
+                logger.debug("WS agent response received", latency=time.time() - start_time)
 
                 response_text = result.get("output", "")
                 latency_ms    = int((time.time() - start_time) * 1000)
 
                 # ── Escalation check (before we tell the client we're done) ─
-                print(f"[DEBUG-FLOW] [WS] Checking for system escalation. Latency so far: {latency_ms}ms")
-                is_escalated = escalation_engine.should_escalate(
+                escalation_result = await escalation_engine.evaluate(
                     user_message=user_message,
                     agent_response=response_text,
                     history=history,
                 )
+                is_escalated = escalation_result.should_escalate
                 intent = escalation_engine.extract_intent(user_message)
 
                 if is_escalated:
-                    urgency = (
-                        "high"
-                        if escalation_engine.SAFETY_PATTERN.search(user_message)
-                        else "normal"
-                    )
+                    urgency = escalation_result.urgency if escalation_result.urgency == "high" else "normal"
                     logger.info(
                         "Escalation triggered (WebSocket)",
                         session_id=session.id,
@@ -148,7 +144,7 @@ async def chat_websocket(
                     "intent":     intent,
                     "latency_ms": latency_ms,
                 })
-                print(f"[DEBUG-FLOW] [WS] Sent response to UI. Escalated: {is_escalated}, Intent: {intent}")
+                logger.debug("WS response sent", escalated=is_escalated, intent=intent)
 
                 # ── Persist assistant message ───────────────────────────────
                 await session_service.add_message(
@@ -214,9 +210,9 @@ async def send_message(
     history    = await session_service.get_history(session.id)
     start_time = time.time()
 
-    print(f"\n[DEBUG-FLOW] [HTTP] Received message: '{request.message}' from session: {session.id}")
-    print(f"[DEBUG-FLOW] [HTTP] Retrieved history. Number of past messages: {len(history)}")
-    print(f"[DEBUG-FLOW] [HTTP] Invoking Agent...")
+    logger.debug("HTTP message received", message_preview=request.message[:50], session_id=session.id)
+    logger.debug("HTTP history retrieved", history_length=len(history))
+    logger.debug("HTTP invoking agent")
 
     try:
         # ── LLM call with hard timeout ──────────────────────────────────────
@@ -224,7 +220,7 @@ async def send_message(
             agent.invoke(user_input=request.message, history=history),
             timeout=LLM_TIMEOUT,
         )
-        print(f"[DEBUG-FLOW] [HTTP] Agent response received in {time.time() - start_time:.2f}s")
+        logger.debug("HTTP agent response received", latency=time.time() - start_time)
 
         response_text = result.get("output", "")
         latency_ms    = int((time.time() - start_time) * 1000)
@@ -236,21 +232,17 @@ async def send_message(
             latency_ms=latency_ms,
         )
 
-        # ── Escalation check ────────────────────────────────────────────────
-        print(f"[DEBUG-FLOW] [HTTP] Checking for system escalation...")
-        is_escalated = escalation_engine.should_escalate(
+        logger.debug("HTTP checking escalation")
+        escalation_result = await escalation_engine.evaluate(
             user_message=request.message,
             agent_response=response_text,
             history=history,
         )
+        is_escalated = escalation_result.should_escalate
         intent = escalation_engine.extract_intent(request.message)
 
         if is_escalated:
-            urgency = (
-                "high"
-                if escalation_engine.SAFETY_PATTERN.search(request.message)
-                else "normal"
-            )
+            urgency = escalation_result.urgency if escalation_result.urgency == "high" else "normal"
             logger.info(
                 "Escalation triggered (HTTP)",
                 session_id=session.id,
@@ -268,7 +260,7 @@ async def send_message(
             except asyncio.TimeoutError:
                 logger.warning("Escalation queue write timed out", session_id=session.id)
 
-        print(f"[DEBUG-FLOW] [HTTP] Completed processing. Escalated: {is_escalated}, Intent: {intent}")
+        logger.debug("HTTP response completed", escalated=is_escalated, intent=intent)
         return ChatResponse(
             session_id=session.id,
             message=response_text,
@@ -314,11 +306,12 @@ async def send_message(
                 if clean_text:
                     # Check if the model intended to escalate
                     wants_escalate = "escalate_to_human" in fg_text
-                    is_escalated = wants_escalate or escalation_engine.should_escalate(
+                    escalation_result = await escalation_engine.evaluate(
                         user_message=request.message,
                         agent_response=clean_text,
                         history=[],
                     )
+                    is_escalated = wants_escalate or escalation_result.should_escalate
                     if wants_escalate:
                         try:
                             await asyncio.wait_for(
@@ -393,16 +386,16 @@ async def send_email_endpoint(
             latency_ms=latency_ms,
         )
 
-        # ── Escalation check ──
-        is_escalated = escalation_engine.should_escalate(
+        escalation_result = await escalation_engine.evaluate(
             user_message=combined_message,
             agent_response=response_text,
             history=history,
         )
+        is_escalated = escalation_result.should_escalate
         intent = escalation_engine.extract_intent(combined_message)
 
         if is_escalated:
-            urgency = "high" if escalation_engine.SAFETY_PATTERN.search(combined_message) else "normal"
+            urgency = escalation_result.urgency if escalation_result.urgency == "high" else "normal"
             logger.info("Escalation triggered (Email)", session_id=session.id, urgency=urgency)
             try:
                 await asyncio.wait_for(

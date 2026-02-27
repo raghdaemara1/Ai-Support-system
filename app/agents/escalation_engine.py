@@ -18,10 +18,6 @@ class EscalationResult:
 
 
 class EscalationEngine:
-
-    def __init__(self, tenant_config=None):
-        self.tenant_config = tenant_config
-
     SAFETY_PATTERN = re.compile(
         r'\b(fire|smoke|injury|emergency|explosion|danger|critical|'
         r'production stop|urgent|unsafe|shutdown|accident)\b',
@@ -42,6 +38,10 @@ class EscalationEngine:
     POSITIVE_WORDS = {
         "thank", "great", "good", "happy", "excellent", "awesome"
     }
+
+    def __init__(self, tenant_config=None):
+        self.tenant_config = tenant_config
+
 
     def analyze_sentiment(self, text: str) -> float:
         """Simple keyword-based sentiment analysis."""
