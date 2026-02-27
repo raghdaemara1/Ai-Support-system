@@ -143,8 +143,6 @@ def generate_alarm_csv(alarms: List[Dict], machine_name: str = "Unknown Machine"
         writer.writerow(row)
     
     return output.getvalue()
-    
-    return output.getvalue()
 
 
 def format_alarms_for_rag(alarms: List[Dict]) -> str:

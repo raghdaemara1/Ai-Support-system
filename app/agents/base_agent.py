@@ -1,4 +1,5 @@
-"""Base agent class with common functionality."""
+import re
+import json
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator, List
 
@@ -6,6 +7,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langgraph.prebuilt import create_react_agent
 
 from app.agents.llm import get_llm
+from app.config import settings
 from app.core.logging import get_logger
 from app.models.schemas import TenantConfig
 
@@ -79,7 +81,6 @@ class BaseAgent(ABC):
         
         # Inject LangSmith Tracer if observability is enabled
         config = self._GRAPH_CONFIG.copy()
-        from app.config import settings
         if settings.langchain_api_key and settings.langchain_tracing_v2.lower() == "true":
             from langchain_core.callbacks import LangChainTracer
             tracer = LangChainTracer(project_name=settings.langchain_project)
@@ -92,20 +93,19 @@ class BaseAgent(ABC):
 
         # Extract last AI message as output, stripping malformed tool-call
         # artifacts that some models emit as raw text content.
-        import re as _re, json as _json
         output = ""
         for msg in reversed(result.get("messages", [])):
             if isinstance(msg, AIMessage) and msg.content:
                 text = msg.content
                 # Strip trailing <function=...> bleed
-                text = _re.sub(r'\s*<function=[^>]*>.*', '', text, flags=_re.DOTALL)
+                text = re.sub(r'\s*<function=[^>]*>.*', '', text, flags=re.DOTALL)
                 
                 # Strip markdown blocks if present
-                clean_for_json = _re.sub(r'^```(?:json)?\s*', '', text)
-                clean_for_json = _re.sub(r'\s*```$', '', clean_for_json).strip()
+                clean_for_json = re.sub(r'^```(?:json)?\s*', '', text)
+                clean_for_json = re.sub(r'\s*```$', '', clean_for_json).strip()
                 
                 # Strip {"name": ...} tool-call JSON that leaked as text
-                text = _re.sub(r'\s*(?:```(?:json)?\s*)?\{\s*"name"\s*:.*', '', text, flags=_re.DOTALL)
+                text = re.sub(r'\s*(?:```(?:json)?\s*)?\{\s*"name"\s*:.*', '', text, flags=re.DOTALL)
                 text = text.strip()
                 
                 # Skip messages that are ONLY a tool-call JSON (whole content replaced)
@@ -114,7 +114,7 @@ class BaseAgent(ABC):
                     
                 # Also skip if the whole message is valid JSON with "name" key (Llama 4 leak)
                 try:
-                    parsed = _json.loads(clean_for_json)
+                    parsed = json.loads(clean_for_json)
                     if isinstance(parsed, dict) and "name" in parsed:
                         continue
                 except Exception:
@@ -153,7 +153,6 @@ class BaseAgent(ABC):
         messages = list(history) + [HumanMessage(content=user_input)]
         
         config = self._GRAPH_CONFIG.copy()
-        from app.config import settings
         if settings.langchain_api_key and settings.langchain_tracing_v2.lower() == "true":
             from langchain_core.callbacks import LangChainTracer
             tracer = LangChainTracer(project_name=settings.langchain_project)

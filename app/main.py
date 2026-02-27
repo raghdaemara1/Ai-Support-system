@@ -67,7 +67,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=["*"],  # WARNING: For demo purposes only. Restrict to specific domains in production!
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -122,12 +122,7 @@ def create_app() -> FastAPI:
         from fastapi.responses import RedirectResponse
         return RedirectResponse("/docs")
 
-    # Backward compatibility for previous typo path.
-    @app.get("/spftware-dataflow", include_in_schema=False)
-    async def serve_spftware_dataflow():
-        return await serve_software_dataflow()
-
-    # ── All API routes ────────────────────────────────────────────────────────
+    # All API routes ────────────────────────────────────────────────────────
     app.include_router(api_router)
 
     return app

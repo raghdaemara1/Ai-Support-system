@@ -1,7 +1,7 @@
 """Tests for escalation engine."""
 import pytest
 
-from app.escalation.engine import EscalationEngine, EscalationResult
+from app.agents.escalation_engine import EscalationEngine, EscalationResult
 from app.models.schemas import TenantConfig
 
 
@@ -15,7 +15,7 @@ def engine():
 def custom_engine():
     """Create escalation engine with custom config."""
     config = TenantConfig(
-        escalation_keywords=["urgent", "emergency"],
+        escalation_keywords=["malfunction", "breakdown"],
         sentiment_threshold=-0.5,
         max_turns_before_escalate=5,
     )
@@ -73,9 +73,22 @@ class TestEscalationEngine:
 
     @pytest.mark.asyncio
     async def test_custom_keywords(self, custom_engine):
-        """Test custom escalation keywords."""
-        result = await custom_engine.evaluate("This is an emergency!")
+        """Test custom escalation keywords — words NOT in the default SAFETY_PATTERN."""
+        # 'malfunction' is only in tenant_config.escalation_keywords, not SAFETY_PATTERN
+        result = await custom_engine.evaluate("There is a malfunction in the system")
         assert result.should_escalate is True
+        assert result.reason == "keyword"
+
+    @pytest.mark.asyncio
+    async def test_custom_max_turns(self, custom_engine):
+        """Test that custom_engine escalates at the tenant-configured turn limit (5), not the default (6)."""
+        # Turn 6 should NOT escalate with default engine but SHOULD with custom (max=5)
+        result_default = await EscalationEngine().evaluate("Hello", turn_count=6)
+        assert result_default.should_escalate is False  # default max is 6, so 6 is not > 6
+
+        result_custom = await custom_engine.evaluate("Hello", turn_count=6)
+        assert result_custom.should_escalate is True   # custom max is 5, so 6 > 5
+        assert result_custom.reason == "max_turns_exceeded"
 
     def test_sentiment_analysis_negative(self, engine):
         """Test sentiment analysis with negative words."""

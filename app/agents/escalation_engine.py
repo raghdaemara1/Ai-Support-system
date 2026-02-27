@@ -5,14 +5,22 @@ Checks user message, agent response, and conversation turn count.
 """
 import re
 import os
-from typing import List
+from dataclasses import dataclass
+from typing import List, Optional
 
-from app.core.logging import get_logger
 
-logger = get_logger(__name__)
+@dataclass
+class EscalationResult:
+    """Detailed result of an escalation check."""
+    should_escalate: bool
+    reason: Optional[str] = None
+    urgency: str = "low"  # low, medium, high
 
 
 class EscalationEngine:
+
+    def __init__(self, tenant_config=None):
+        self.tenant_config = tenant_config
 
     SAFETY_PATTERN = re.compile(
         r'\b(fire|smoke|injury|emergency|explosion|danger|critical|'
@@ -28,6 +36,85 @@ class EscalationEngine:
         r"unclear|no record|consult|not in (my|the) (knowledge|database|kb))",
         re.IGNORECASE,
     )
+    NEGATIVE_WORDS = {
+        "terrible", "angry", "bad", "horrible", "awful", "sue", "manager", "complaint"
+    }
+    POSITIVE_WORDS = {
+        "thank", "great", "good", "happy", "excellent", "awesome"
+    }
+
+    def analyze_sentiment(self, text: str) -> float:
+        """Simple keyword-based sentiment analysis."""
+        words = set(re.findall(r'\w+', text.lower()))
+        pos = len(words.intersection(self.POSITIVE_WORDS))
+        neg = len(words.intersection(self.NEGATIVE_WORDS))
+        
+        if pos == 0 and neg == 0:
+            return 0.0
+        return (pos - neg) / (pos + neg)
+
+    async def evaluate(
+        self,
+        user_message: str,
+        agent_response: str = "",
+        history: List = None,
+        sentiment_score: Optional[float] = None,
+        turn_count: Optional[int] = None,
+    ) -> EscalationResult:
+        """
+        Evaluate if a message or conversation state warrants escalation.
+        Uses tenant_config for custom keywords, sentiment threshold, and max turns
+        when provided — falling back to safe defaults otherwise.
+        """
+        history = history or []
+
+        # Resolve thresholds from tenant config (if set) or env/defaults
+        if self.tenant_config:
+            max_turns = self.tenant_config.max_turns_before_escalate
+            sentiment_threshold = self.tenant_config.sentiment_threshold
+            custom_keywords = [kw.lower() for kw in self.tenant_config.escalation_keywords]
+        else:
+            max_turns = int(os.environ.get("MAX_TURNS_BEFORE_ESCALATE", 6))
+            sentiment_threshold = -0.5
+            custom_keywords = []
+
+        # 1. Tenant custom escalation keywords (highest priority after safety)
+        if custom_keywords:
+            msg_lower = user_message.lower()
+            if any(kw in msg_lower for kw in custom_keywords):
+                return EscalationResult(True, "keyword", "medium")
+
+        # 2. Check for high-urgency legal/threat keywords
+        if "sue" in user_message.lower() or "manager" in user_message.lower():
+            return EscalationResult(True, "keyword", "high")
+
+        # 3. Check general safety patterns
+        if self.SAFETY_PATTERN.search(user_message):
+            return EscalationResult(True, "keyword", "medium")
+
+        # 4. Check for human requests
+        if self.HUMAN_REQUEST_PATTERN.search(user_message):
+            return EscalationResult(True, "keyword", "low")
+
+        # 5. Agent uncertainty
+        if agent_response and self.UNSURE_PATTERN.search(agent_response):
+            return EscalationResult(True, "agent_uncertainty", "low")
+
+        # 6. Sentiment analysis (if provided or calculated)
+        score = sentiment_score if sentiment_score is not None else self.analyze_sentiment(user_message)
+        if score < sentiment_threshold:
+            return EscalationResult(True, "negative_sentiment", "medium")
+
+        # 7. Turn count
+        current_turns = turn_count if turn_count is not None else len([
+            msg for msg in history
+            if (isinstance(msg, dict) and msg.get("role") == "user")
+            or (getattr(msg, "type", None) == "human")
+        ])
+        if current_turns > max_turns:
+            return EscalationResult(True, "max_turns_exceeded", "low")
+
+        return EscalationResult(False)
 
     def should_escalate(
         self,
@@ -36,42 +123,14 @@ class EscalationEngine:
         history: List = None,
     ) -> bool:
         """
-        Determine if the conversation needs immediate human escalation.
-        Priority order: safety → human request → agent unsure → turn limit.
+        .. deprecated::
+            Use ``await evaluate()`` for full escalation logic including
+            sentiment analysis, turn count, and urgency classification.
+            This method only checks the three core regex rules.
         """
-        history = history or []
-        max_turns = int(os.environ.get("MAX_TURNS_BEFORE_ESCALATE", 6))
-
-        # Count user turns — history may contain LangChain BaseMessage objects or plain dicts.
-        # Explicit parentheses prevent operator-precedence ambiguity.
-        turn_count = len([
-            msg for msg in history
-            if (isinstance(msg, dict) and msg.get("role") == "user")
-            or (getattr(msg, "type", None) == "human")
-        ])
-
-        # Rule 1: safety keyword in user message — always escalate immediately
-        if self.SAFETY_PATTERN.search(user_message):
-            logger.info("Escalation: safety keyword detected")
-            return True
-
-        # Rule 2: user explicitly asked for a human
-        if self.HUMAN_REQUEST_PATTERN.search(user_message):
-            logger.info("Escalation: human request detected")
-            return True
-
-        # Rule 3: agent admitted it does not know the answer
-        if agent_response and self.UNSURE_PATTERN.search(agent_response):
-            logger.info("Escalation: agent expressed uncertainty")
-            return True
-
-        # Rule 4: conversation has dragged on too long without resolution
-        if turn_count > max_turns:
-            logger.info(
-                "Escalation: turn limit exceeded",
-                turn_count=turn_count,
-                max_turns=max_turns,
-            )
+        if self.SAFETY_PATTERN.search(user_message) or \
+           self.HUMAN_REQUEST_PATTERN.search(user_message) or \
+           (agent_response and self.UNSURE_PATTERN.search(agent_response)):
             return True
 
         return False

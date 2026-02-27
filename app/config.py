@@ -1,4 +1,5 @@
 """Application configuration using Pydantic Settings."""
+import secrets
 from functools import lru_cache
 from typing import Literal
 
@@ -16,7 +17,7 @@ class Settings(BaseSettings):
 
     # App
     app_env: Literal["development", "staging", "production"] = "development"
-    app_secret_key: str = "changeme"
+    app_secret_key: str = secrets.token_hex(32)
     app_domain: str = "localhost:8000"
     debug: bool = True
 
