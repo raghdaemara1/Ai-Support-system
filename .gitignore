@@ -95,3 +95,6 @@ Screenshot*.png
 CLAUDE.md
 CLAUDE.html
 *claude*
+# Temporary test outputs
+test_output.txt
+final_test_output.txt
