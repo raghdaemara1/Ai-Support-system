@@ -295,46 +295,77 @@ async def send_message(
                 detail="The AI service is temporarily rate-limited. Please wait a few minutes and try again.",
             )
 
-        # Groq tool_use_failed (400): smaller models sometimes mix text + <function=...>
-        # Recover the text portion from failed_generation rather than returning a 500.
-        if "tool_use_failed" in error_str or "failed_generation" in error_str:
-            fg_match = _re.search(r"'failed_generation':\s*'(.*?)'[,}]", error_str, _re.DOTALL)
+        # Groq tool_use_failed / recursion limit: model emits wrong tool-call format
+        # or loops trying to call a tool.  Retry without tools as a fallback.
+        if ("tool_use_failed" in error_str
+                or "failed_generation" in error_str
+                or "Recursion limit" in error_str
+                or "recursion_limit" in error_str.lower()):
+            # Handle both single-quoted and double-quoted values in the repr string
+            fg_match = _re.search(
+                r"['\"]failed_generation['\"]\s*:\s*(?P<q>['\"])(?P<text>.*?)(?P=q)\s*[,}]",
+                error_str, _re.DOTALL
+            )
+            clean_text = ""
+            wants_escalate = False
             if fg_match:
-                fg_text = fg_match.group(1).replace("\\'", "'").replace("\\n", "\n")
-                # Extract text before any <function=...> call
+                fg_text = fg_match.group("text").replace("\\'", "'").replace("\\n", "\n")
+                wants_escalate = "escalate_to_human" in fg_text
                 clean_text = _re.split(r"\s*<function=", fg_text)[0].strip()
-                if clean_text:
-                    # Check if the model intended to escalate
-                    wants_escalate = "escalate_to_human" in fg_text
-                    escalation_result = await escalation_engine.evaluate(
-                        user_message=request.message,
-                        agent_response=clean_text,
-                        history=[],
-                    )
-                    is_escalated = wants_escalate or escalation_result.should_escalate
-                    if wants_escalate:
-                        try:
-                            await asyncio.wait_for(
-                                _perform_escalation(
-                                    session_id=session.id,
-                                    reason="Escalated via model intent recovery",
-                                    urgency="normal",
-                                ),
-                                timeout=10.0,
-                            )
-                        except asyncio.TimeoutError:
-                            pass
 
-                    await session_service.add_message(
-                        session.id, "assistant", clean_text, latency_ms=0
+            # Model went straight to a tool call — retry without tools
+            if not clean_text:
+                try:
+                    from app.agents.llm import get_llm as _get_llm
+                    from langchain_core.messages import HumanMessage as _HumanMessage
+                    from langchain_core.messages import SystemMessage as _SystemMessage
+                    _llm = _get_llm()
+                    _sys = agent._get_system_prompt()
+                    # history already ends with the current HumanMessage; exclude it
+                    # to avoid duplicating when we append request.message below
+                    _prior = history[:-1] if history else []
+                    _retry_msgs = (
+                        [_SystemMessage(content=_sys)]
+                        + list(_prior)
+                        + [_HumanMessage(content=request.message)]
                     )
-                    return ChatResponse(
-                        session_id=session.id,
-                        message=clean_text,
-                        escalated=is_escalated,
-                        intent=escalation_engine.extract_intent(request.message),
-                        sources=[],
+                    _retry = await asyncio.wait_for(
+                        _llm.ainvoke(_retry_msgs), timeout=30.0
                     )
+                    clean_text = (_retry.content or "").strip()
+                except Exception as retry_err:
+                    logger.warning("Retry without tools failed", error=str(retry_err)[:100])
+
+            if clean_text:
+                escalation_result = await escalation_engine.evaluate(
+                    user_message=request.message,
+                    agent_response=clean_text,
+                    history=history,
+                )
+                is_escalated = wants_escalate or escalation_result.should_escalate
+                if wants_escalate:
+                    try:
+                        await asyncio.wait_for(
+                            _perform_escalation(
+                                session_id=session.id,
+                                reason="Escalated via model intent recovery",
+                                urgency="normal",
+                            ),
+                            timeout=10.0,
+                        )
+                    except asyncio.TimeoutError:
+                        pass
+
+                await session_service.add_message(
+                    session.id, "assistant", clean_text, latency_ms=0
+                )
+                return ChatResponse(
+                    session_id=session.id,
+                    message=clean_text,
+                    escalated=is_escalated,
+                    intent=escalation_engine.extract_intent(request.message),
+                    sources=[],
+                )
 
         raise HTTPException(status_code=500, detail=f"Agent error: {error_str[:200]}")
 
@@ -433,5 +464,12 @@ async def send_email_endpoint(
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="The Email agent took too long to respond.")
     except Exception as e:
-        logger.error("Email Agent error", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)[:200]}")
+        import re as _re2
+        error_str = str(e)
+        logger.error("Email Agent error", error=error_str[:300])
+        if "rate_limit" in error_str.lower() or "429" in error_str or "ratelimit" in error_str.lower():
+            raise HTTPException(
+                status_code=429,
+                detail="The AI service is temporarily rate-limited. Please wait a few minutes and try again.",
+            )
+        raise HTTPException(status_code=500, detail=f"Agent error: {error_str[:200]}")

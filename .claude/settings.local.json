@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(C:/Python312/python.exe:*)",
-      "Bash(Select-Object -ExpandProperty Content)"
+      "Bash(Select-Object -ExpandProperty Content)",
+      "Bash(venv\\\\Scripts\\\\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload)"
     ]
   }
 }

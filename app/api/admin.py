@@ -65,9 +65,9 @@ async def get_tenant(
     tenant_id: str,
     db: AsyncSession = Depends(get_db_session),
 ) -> TenantResponse:
-    """Get tenant by ID."""
+    """Get tenant by ID or slug."""
     service = TenantService(db)
-    tenant = await service.get_tenant(tenant_id)
+    tenant = await service.get_tenant_by_id_or_slug(tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     return TenantResponse.model_validate(tenant)
@@ -77,7 +77,7 @@ async def get_tenant(
 async def update_tenant_config(
     tenant_id: str,
     config: TenantConfig,
-    api_key: str = Depends(AdminAPIKey),
+    api_key: AdminAPIKey,
     db: AsyncSession = Depends(get_db_session),
 ) -> TenantResponse:
     """Update tenant configuration."""

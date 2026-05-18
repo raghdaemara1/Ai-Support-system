@@ -2,6 +2,14 @@ from app.agent.rag_pipeline import RAGPipeline
 from app.storage.database import get_database
 
 
+async def ingest_from_url(tenant_id: str, url: str) -> None:
+    """Ingest knowledge from a URL into a tenant's knowledge base."""
+    from app.rag.ingestion import ingest_documents
+    if url:
+        sources = [{"type": "url", "url": url, "source_name": url}]
+        await ingest_documents(tenant_id=tenant_id, sources=sources)
+
+
 def build_kb_from_alarms(machine: str | None = None) -> None:
     db = get_database()
     rag = RAGPipeline()
