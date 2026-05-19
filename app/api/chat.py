@@ -63,11 +63,14 @@ async def chat_websocket(
         customer_id=customer_id,
         channel="chat",
     )
-    tenant_config = await tenant_service.get_config(tenant_id)
+    _tenant_obj = await tenant_service.get_tenant_by_id_or_slug(tenant_id)
+    tenant_config = TenantConfig(**_tenant_obj.config) if _tenant_obj else TenantConfig()
+    # KB collections are keyed by slug; fall back to raw tenant_id if tenant not found
+    kb_tenant_id = _tenant_obj.slug if _tenant_obj else tenant_id
     agent = get_agent_for_channel(
         channel="chat",
         tenant_config=tenant_config,
-        tenant_id=tenant_id,
+        tenant_id=kb_tenant_id,
     )
 
     logger.info(
@@ -199,11 +202,13 @@ async def send_message(
         channel="chat",
         session_id=request.session_id,
     )
-    tenant_config = await tenant_service.get_config(request.tenant_id)
+    _tenant_obj = await tenant_service.get_tenant_by_id_or_slug(request.tenant_id)
+    tenant_config = TenantConfig(**_tenant_obj.config) if _tenant_obj else TenantConfig()
+    kb_tenant_id = _tenant_obj.slug if _tenant_obj else request.tenant_id
     agent = get_agent_for_channel(
         channel="chat",
         tenant_config=tenant_config,
-        tenant_id=request.tenant_id,
+        tenant_id=kb_tenant_id,
     )
 
     await session_service.add_message(session.id, "user", request.message)
@@ -388,11 +393,13 @@ async def send_email_endpoint(
         customer_id=request.customer_email,
         channel="email",
     )
-    tenant_config = await tenant_service.get_config(request.tenant_id)
+    _tenant_obj = await tenant_service.get_tenant_by_id_or_slug(request.tenant_id)
+    tenant_config = TenantConfig(**_tenant_obj.config) if _tenant_obj else TenantConfig()
+    kb_tenant_id = _tenant_obj.slug if _tenant_obj else request.tenant_id
     agent = get_agent_for_channel(
         channel="email",
         tenant_config=tenant_config,
-        tenant_id=request.tenant_id,
+        tenant_id=kb_tenant_id,
     )
 
     combined_message = f"Subject: {request.subject}\n\n{request.body}"
