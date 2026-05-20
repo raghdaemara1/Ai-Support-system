@@ -52,6 +52,18 @@ def get_llm() -> BaseChatModel:
             max_output_tokens=2048,
         )
 
+    elif provider == "ollama":
+        from langchain_ollama import ChatOllama
+
+        model = settings.ollama_model
+        logger.info("Using Ollama local LLM provider", model=model)
+        return ChatOllama(
+            model=model,
+            base_url=settings.ollama_base_url,
+            temperature=0.1,
+            num_predict=2048,
+        )
+
     else:
         raise ValueError(f"Unknown LLM provider: {provider}")
 
@@ -80,6 +92,17 @@ def get_streaming_llm() -> BaseChatModel:
             model="gemini-2.0-flash",
             temperature=0.1,
             max_output_tokens=2048,
+        )
+
+    elif provider == "ollama":
+        from langchain_ollama import ChatOllama
+
+        model = settings.groq_model or "llama3.1"
+        return ChatOllama(
+            model=model,
+            temperature=0.1,
+            num_predict=2048,
+            streaming=True,
         )
 
     else:

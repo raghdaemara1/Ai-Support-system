@@ -26,7 +26,9 @@ logger = get_logger(__name__)
 escalation_engine = EscalationEngine()
 
 # Hard timeout for a single LLM round-trip (seconds)
-LLM_TIMEOUT = 45
+# Ollama runs locally and needs more time, especially on first request (model loading)
+from app.config import settings as _settings
+LLM_TIMEOUT = 180 if _settings.llm_provider == "ollama" else 45
 
 
 @router.websocket("/ws/{tenant_id}/{customer_id}")

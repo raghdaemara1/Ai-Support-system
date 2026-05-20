@@ -23,10 +23,12 @@ class Settings(BaseSettings):
     allowed_origins: list[str] = ["http://localhost:3000"]
 
     # LLM Provider
-    llm_provider: Literal["groq", "google"] = "groq"
+    llm_provider: Literal["groq", "google", "ollama"] = "groq"
     groq_api_key: str = ""
     google_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
+    ollama_model: str = "llama3.1"
+    ollama_base_url: str = "http://localhost:11434"
 
     # Observability (LangSmith)
     langchain_api_key: str = ""
@@ -43,6 +45,11 @@ class Settings(BaseSettings):
 
     # Embeddings
     embedding_model: str = "all-MiniLM-L6-v2"
+
+    # Twilio (Voice channel)
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_phone_number: str = ""
 
     # n8n Workflow Automation
     n8n_base_url: str = "http://localhost:5678"

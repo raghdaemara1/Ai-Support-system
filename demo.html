@@ -1694,8 +1694,8 @@
 
         const timer = setTimeout(() => {
           localWs.close();
-          settle(reject, new Error('WebSocket timeout (30s)'));
-        }, 30000);
+          settle(reject, new Error('WebSocket timeout (180s)'));
+        }, 180000);
 
         localWs.onopen = () => {
           localWs.send(JSON.stringify({ message: text }));
@@ -1721,8 +1721,9 @@
         };
 
         localWs.onerror = () => {
-          // Fallback to HTTP on WS error
-          settle(null, null);  // mark settled to prevent double-fire
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
           callHTTP(text).then(resolve).catch(reject);
         };
 
@@ -1743,7 +1744,7 @@
           session_id: sessionId || undefined,
           message: text,
         }),
-        signal: AbortSignal.timeout(45000),
+        signal: AbortSignal.timeout(180000),
       });
       if (!r.ok) {
         const detail = await r.text();

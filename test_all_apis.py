@@ -289,7 +289,7 @@ print("\n── Voice (Twilio) ────────────────�
 
 if tenant_id:
     # Twilio webhook — first call (no SpeechResult)
-    s, b = req("POST", f"/api/twilio/twilio/webhook/{tenant_id}",
+    s, b = req("POST", f"/api/twilio/webhook/{tenant_id}",
                form={"From": "+15555550001", "CallSid": "CA-test-001"})
     ok = s == 200
     label = PASS if ok else FAIL
@@ -297,7 +297,7 @@ if tenant_id:
     results.append(("POST /api/twilio/webhook greeting", ok))
 
     # Twilio webhook — subsequent call with speech
-    s, b = req("POST", f"/api/twilio/twilio/webhook/{tenant_id}",
+    s, b = req("POST", f"/api/twilio/webhook/{tenant_id}",
                form={"From": "+15555550001", "CallSid": "CA-test-001",
                      "SpeechResult": "What does alarm E-001 mean?"})
     ok = s == 200
