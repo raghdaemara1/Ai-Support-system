@@ -1,4 +1,4 @@
-# AI Customer Support Agent — O3Sigma Industrial Platform
+# AI Customer Support Agent —  Industrial Platform
 
 > **A multi-tenant, multi-channel AI support platform — answers customer queries across Chat, Voice, and Email using a RAG knowledge base, automatically escalates when it needs a human, and wires into n8n for downstream automation.**
 
